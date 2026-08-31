@@ -30,6 +30,26 @@ WEATHER_EMOJIS = {
     "blizzard": "🌨️"
 }
 
+# Color mapping for weather keywords
+WEATHER_COLORS = {
+    "sun": "#FFFACD",
+    "clear": "#FFFACD",
+    "cloud": "#D3D3D3",
+    "overcast": "#D3D3D3",
+    "rain": "#ADD8E6",
+    "drizzle": "#ADD8E6",
+    "shower": "#ADD8E6",
+    "thunderstorm": "#B0C4DE",
+    "lightning": "#B0C4DE",
+    "snow": "#F0F8FF",
+    "wind": "#E0FFFF",
+    "tornado": "#FFE4E1",
+    "dust": "#FFE4E1",
+    "sand": "#F4A460",
+    "blizzard": "#F0F8FF"
+}
+
+
 # Fetch weather data from wttr.in
 def get_weather(city):
     global last_weather_data
@@ -68,6 +88,9 @@ def update_ui(weather_data):
         
         display_desc = f"{emoji} {desc}" if emoji else desc
 
+        # Update UI color based on weather description
+        update_ui_color(desc_lower)
+
         # Convert units
         if current_unit == "F":
             temp_display = (temp_c * 9/5) + 32
@@ -84,6 +107,20 @@ def update_ui(weather_data):
         city_label.config(text="City: Error")
         temp_label.config(text="Temperature: Error")
         desc_label.config(text="Condition: City not found or connection error")
+
+
+# Update UI color based on weather description
+def update_ui_color(desc_lower):
+    color = "#FFFFFF"  # Default white
+    for keyword, color_val in WEATHER_COLORS.items():
+        if keyword in desc_lower:
+            color = color_val
+            break
+    
+    root.configure(bg=color)
+    city_label.configure(bg=color)
+    temp_label.configure(bg=color)
+    desc_label.configure(bg=color)
 
 # Fetch weather when button pressed
 def fetch_weather():
