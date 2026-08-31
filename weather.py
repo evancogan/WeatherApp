@@ -11,6 +11,25 @@ API_URL = "https://wttr.in/"
 current_unit = "F"
 last_weather_data = None
 
+# Emoji mapping for weather keywords
+WEATHER_EMOJIS = {
+    "sun": "☀️",
+    "clear": "☀️",
+    "cloud": "☁️",
+    "overcast": "☁️",
+    "rain": "🌧️",
+    "drizzle": "🌦️",
+    "shower": "🌦️",
+    "thunderstorm": "⛈️",
+    "lightning": "⚡",
+    "snow": "❄️",
+    "wind": "💨",
+    "tornado": "🌪️",
+    "dust": "🌪️",
+    "sand": "🏜️",
+    "blizzard": "🌨️"
+}
+
 # Fetch weather data from wttr.in
 def get_weather(city):
     global last_weather_data
@@ -39,6 +58,16 @@ def update_ui(weather_data):
         temp_c = float(current['temp_C'])
         desc = current['weatherDesc'][0]['value']
 
+        # Add emoji if keyword matches
+        desc_lower = desc.lower()
+        emoji = ""
+        for keyword, symbol in WEATHER_EMOJIS.items():
+            if keyword in desc_lower:
+                emoji = symbol
+                break
+        
+        display_desc = f"{emoji} {desc}" if emoji else desc
+
         # Convert units
         if current_unit == "F":
             temp_display = (temp_c * 9/5) + 32
@@ -49,7 +78,7 @@ def update_ui(weather_data):
 
         city_label.config(text=f"City: {city_name}")
         temp_label.config(text=f"Temperature: {temp_display:.1f}{unit_symbol}")
-        desc_label.config(text=f"Condition: {desc}")
+        desc_label.config(text=f"Condition: {display_desc}")
 
     else:
         city_label.config(text="City: Error")
