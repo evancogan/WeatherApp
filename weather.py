@@ -60,12 +60,10 @@ def update_ui(weather_data):
 def fetch_weather():
     city = city_entry.get().strip()
 
-    if city:
-        weather_data = get_weather(city)
-    else:
-        # Auto-detect location
-        weather_data = requests.get("https://wttr.in/?format=j1").json()
+    if city == 'City, State':
+        city = ""
 
+    weather_data = get_weather(city)
     update_ui(weather_data)
 
 
