@@ -18,6 +18,49 @@ API_URL = "https://wttr.in/"
 current_unit = "F"
 last_weather_data = None
 BASE_WIDTH = 400  # The width we use as a reference for scaling
+current_bg_color = (255, 255, 255)  # Initial background color (white)
+
+# Helper functions for color animation
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def rgb_to_hex(rgb):
+    return '#%02x%02x%02x' % rgb
+
+def fade_color(target_rgb, steps=20):
+    """Smoothly transitions the background color to the target_rgb."""
+    global current_bg_color
+    
+    if current_bg_color == target_rgb:
+        return
+
+    def animate(step):
+        global current_bg_color
+        if step >= steps:
+            current_bg_color = target_rgb
+            apply_color(current_bg_color)
+            return
+
+        # Interpolate
+        new_color = tuple(
+            int(current_bg_color[i] + (target_rgb[i] - current_bg_color[i]) * (step / steps))
+            for i in range(3)
+        )
+        
+        apply_color(new_color)
+        root.after(30, lambda: animate(step + 1))
+
+    animate(1)
+
+def apply_color(rgb):
+    """Applies the given RGB color to all relevant widgets."""
+    hex_color = rgb_to_hex(rgb)
+    root.configure(bg=hex_color)
+    main_frame.configure(bg=hex_color)
+    city_label.configure(bg=hex_color)
+    temp_label.configure(bg=hex_color)
+    desc_label.configure(bg=hex_color)
 
 # Emoji mapping for weather keywords
 WEATHER_EMOJIS = {
@@ -119,17 +162,14 @@ def update_ui(weather_data):
 
 # Update UI color based on weather description
 def update_ui_color(desc_lower):
-    color = "#FFFFFF"  # Default white
+    color_hex = "#FFFFFF"  # Default white
     for keyword, color_val in WEATHER_COLORS.items():
         if keyword in desc_lower:
-            color = color_val
+            color_hex = color_val
             break
     
-    root.configure(bg=color)
-    main_frame.configure(bg=color)
-    city_label.configure(bg=color)
-    temp_label.configure(bg=color)
-    desc_label.configure(bg=color)
+    target_rgb = hex_to_rgb(color_hex)
+    fade_color(target_rgb)
 
 # Fetch weather when button pressed
 def fetch_weather():
