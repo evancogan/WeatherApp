@@ -130,9 +130,6 @@ def update_ui_color(desc_lower):
     city_label.configure(bg=color)
     temp_label.configure(bg=color)
     desc_label.configure(bg=color)
-    city_entry.configure(bg=color)
-    fetch_button.configure(bg=color)
-    toggle_button.configure(bg=color)
 
 # Fetch weather when button pressed
 def fetch_weather():
@@ -179,7 +176,7 @@ def resize_fonts(event):
     toggle_button.config(font=("Arial", size_small))
 
 # Define the UI element FIRST
-city_entry = tk.Entry(main_frame, width=30, font=("Arial", 12))
+city_entry = tk.Entry(main_frame, width=30, font=("Arial", 12), bg="white")
 
 # Define the functions (these don't need city_entry to exist yet,
 # because they only RUN when a click happens later)
@@ -204,8 +201,8 @@ temp_label = tk.Label(main_frame, text="Temperature: N/A", font=("Arial", 12, "b
 desc_label = tk.Label(main_frame, text="Weather Condition: N/A", font=("Arial", 10))
 city_label = tk.Label(main_frame, text="City: N/A", font=("Arial", 12))
 
-fetch_button = tk.Button(main_frame, text="Fetch Weather", command=fetch_weather, bg="#4CAF50", fg="white")
-toggle_button = tk.Button(main_frame, text="Switch to °C", command=toggle_unit)
+fetch_button = tk.Button(main_frame, text="Fetch Weather", command=fetch_weather, bg="white", fg="black")
+toggle_button = tk.Button(main_frame, text="Switch to °C", command=toggle_unit, bg="white", fg="black")
 
 # Layout
 city_label.pack(pady=10, expand=True, fill='x')
