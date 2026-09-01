@@ -1,15 +1,23 @@
 import tkinter as tk
 import requests
+from tkinter import font
 
 # Define the main window
 root = tk.Tk()
 root.title("Weather App (No Key Required)")
+root.geometry("400x500")  # Set a default starting size
+root.minsize(300, 400)    # Prevent the window from getting too small
+
+# Create a main frame for better scaling and layout
+main_frame = tk.Frame(root)
+main_frame.pack(expand=True, fill='both')
 
 API_URL = "https://wttr.in/"
 
 # Global state
 current_unit = "F"
 last_weather_data = None
+BASE_WIDTH = 400  # The width we use as a reference for scaling
 
 # Emoji mapping for weather keywords
 WEATHER_EMOJIS = {
@@ -118,9 +126,13 @@ def update_ui_color(desc_lower):
             break
     
     root.configure(bg=color)
+    main_frame.configure(bg=color)
     city_label.configure(bg=color)
     temp_label.configure(bg=color)
     desc_label.configure(bg=color)
+    city_entry.configure(bg=color)
+    fetch_button.configure(bg=color)
+    toggle_button.configure(bg=color)
 
 # Fetch weather when button pressed
 def fetch_weather():
@@ -142,8 +154,32 @@ def toggle_unit():
     if last_weather_data:
         update_ui(last_weather_data)
 
+def resize_fonts(event):
+    """This function runs every time the window is resized."""
+    # Calculate scale factor based on width
+    # We use max(1, ...) to prevent division by zero or negative scaling
+    scale = event.width / BASE_WIDTH
+    
+    # Cap the scale to prevent overly large fonts on huge screens
+    scale = min(scale, 3.0)
+
+    # Define new font sizes based on scale
+    # We use int() because font sizes must be integers
+    # We use max(8, ...) to ensure text doesn't become invisible
+    size_large = max(int(24 * scale), 12)
+    size_medium = max(int(16 * scale), 10)
+    size_small = max(int(12 * scale), 8)
+
+    # Apply the new font sizes to the UI elements
+    city_label.config(font=("Arial", size_large))
+    temp_label.config(font=("Arial", size_medium, "bold"))
+    desc_label.config(font=("Arial", size_small))
+    city_entry.config(font=("Arial", size_small))
+    fetch_button.config(font=("Arial", size_small))
+    toggle_button.config(font=("Arial", size_small))
+
 # Define the UI element FIRST
-city_entry = tk.Entry(root, width=30, font=("Arial", 12))
+city_entry = tk.Entry(main_frame, width=30, font=("Arial", 12))
 
 # Define the functions (these don't need city_entry to exist yet,
 # because they only RUN when a click happens later)
@@ -164,20 +200,23 @@ city_entry.bind('<FocusIn>', on_entry_click)
 city_entry.bind('<FocusOut>', on_focusout)
 
 # UI Elements
-temp_label = tk.Label(root, text="Temperature: N/A", font=("Arial", 12, "bold"))
-desc_label = tk.Label(root, text="Weather Condition: N/A", font=("Arial", 10))
-city_label = tk.Label(root, text="City: N/A", font=("Arial", 12))
-city_label.pack(pady=5)
+temp_label = tk.Label(main_frame, text="Temperature: N/A", font=("Arial", 12, "bold"))
+desc_label = tk.Label(main_frame, text="Weather Condition: N/A", font=("Arial", 10))
+city_label = tk.Label(main_frame, text="City: N/A", font=("Arial", 12))
 
-fetch_button = tk.Button(root, text="Fetch Weather", command=fetch_weather, bg="#4CAF50", fg="white")
-toggle_button = tk.Button(root, text="Switch to °C", command=toggle_unit)
+fetch_button = tk.Button(main_frame, text="Fetch Weather", command=fetch_weather, bg="#4CAF50", fg="white")
+toggle_button = tk.Button(main_frame, text="Switch to °C", command=toggle_unit)
 
 # Layout
-temp_label.pack(pady=10)
-desc_label.pack(pady=10)
-city_entry.pack(pady=10)
-fetch_button.pack(pady=10)
-toggle_button.pack(pady=5)
+city_label.pack(pady=10, expand=True, fill='x')
+temp_label.pack(pady=10, expand=True, fill='x')
+desc_label.pack(pady=10, expand=True, fill='x')
+city_entry.pack(pady=10, expand=True, fill='x')
+fetch_button.pack(pady=10, expand=True, fill='x')
+toggle_button.pack(pady=10, expand=True, fill='x')
+
+# Bind the resize event to the resize_fonts function
+root.bind("<Configure>", resize_fonts)
 
 # Start app
 fetch_weather()   # run initial fetch to display current location weather
