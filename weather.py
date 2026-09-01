@@ -208,9 +208,9 @@ toggle_button = tk.Button(main_frame, text="Switch to °C", command=toggle_unit,
 city_label.pack(pady=10, expand=True, fill='x')
 temp_label.pack(pady=10, expand=True, fill='x')
 desc_label.pack(pady=10, expand=True, fill='x')
-city_entry.pack(pady=10, expand=True, fill='x')
-fetch_button.pack(pady=10, expand=True, fill='x')
-toggle_button.pack(pady=10, expand=True, fill='x')
+city_entry.pack(pady=10, padx=40, expand=True, fill='x')
+fetch_button.pack(pady=10, padx=40, expand=True, fill='x')
+toggle_button.pack(pady=10, padx=40, expand=True, fill='x')
 
 # Bind the resize event to the resize_fonts function
 root.bind("<Configure>", resize_fonts)
