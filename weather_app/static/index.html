@@ -15,11 +15,20 @@
         <span class="tune-in-hint">click to power on</span>
     </button>
 
+    <div class="reflection" id="reflection" aria-hidden="true">
+        <video id="reflection-video" playsinline muted></video>
+    </div>
+
     <div class="scanlines"></div>
 
-    <button type="button" class="mute-toggle" id="mute-button" aria-pressed="false" title="Mute music">
-        &#9834; On
-    </button>
+    <div class="channel-controls">
+        <button type="button" class="chip" id="reflection-button" aria-pressed="false" title="Turn off screen reflection">
+            &#9673; Refl
+        </button>
+        <button type="button" class="chip" id="mute-button" aria-pressed="false" title="Mute music">
+            &#9834; On
+        </button>
+    </div>
 
     <header class="channel-header">
         <span class="channel-ident">WX-1</span>

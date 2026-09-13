@@ -82,12 +82,62 @@ body {
     99%           { opacity: 1; }
 }
 
-/* Small corner control, kept out of the main broadcast layout */
-.mute-toggle {
+/* The room bouncing off the curved glass. Screen blending means only light from
+   the room adds to the picture, the way a real reflection behaves -- the dark
+   parts of the room contribute nothing and the gradient underneath stays clean. */
+.reflection {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    overflow: hidden;
+    mix-blend-mode: screen;
+    opacity: 0;
+    transition: opacity 1500ms ease;
+    /* Glare gathers toward the curved edges and thins out over the picture. */
+    -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 45%,
+        rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.72) 55%, #000 100%);
+    mask-image: radial-gradient(ellipse 78% 72% at 50% 45%,
+        rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.72) 55%, #000 100%);
+}
+
+/* Fades the layer in once the camera stream is live. This is deliberately a
+   fixed 1 and not the strength knob: CSS clamps opacity to 0-1, so any value at
+   or above 1 is identical and there is no headroom to turn up. Strength is
+   controlled by --reflection-strength on the video below instead. */
+.reflection.live {
+    opacity: 1;
+}
+
+.reflection video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Mirrored, because you are looking at yourself in glass rather than at a
+       monitor. Overscanned so the blur never exposes a soft edge. */
+    transform: scaleX(-1) scale(1.08);
+    /* --reflection-strength is the single knob for how present the reflection
+       is, and it drives brightness because brightness has no upper limit. Screen
+       blending only ever adds light, and brightness multiplies rather than adds,
+       so turning this up amplifies faces and lamps while true black in the room
+       stays at zero and contributes nothing. Roughly: 1.5 is a faint smudge, 2.5
+       reads clearly on movement, 4 looks like a lit room behind the glass, and
+       past about 6 the highlights blow out to flat white. */
+    filter: blur(7px) saturate(0.5) contrast(1.35)
+            brightness(var(--reflection-strength, 2.6));
+}
+
+/* Small corner controls, kept out of the main broadcast layout */
+.channel-controls {
     position: fixed;
     top: 12px;
     right: 12px;
     z-index: 50;
+    display: flex;
+    gap: 8px;
+}
+
+.chip {
     padding: 4px 10px;
     border: 1px solid rgba(255, 214, 10, 0.55);
     border-radius: 999px;
@@ -104,12 +154,14 @@ body {
     transition: opacity 0.15s ease;
 }
 
-.mute-toggle:hover,
-.mute-toggle:focus-visible {
+.chip:hover,
+.chip:focus-visible {
     opacity: 1;
 }
 
-.mute-toggle[aria-pressed="true"] {
+/* Shared "switched off" look. Keyed to a class rather than aria-pressed so each
+   chip can report its own honest pressed state. */
+.chip.is-off {
     color: rgba(255, 255, 255, 0.65);
     border-color: rgba(255, 255, 255, 0.3);
 }
@@ -211,6 +263,21 @@ body {
 
     .tune-in-prompt {
         animation: none;
+    }
+
+    /* The reflection overlay shows a live camera feed, which is continuous
+       motion, so it is hidden by default here. app.js also skips the camera
+       request at power-on under this media query, which means no permission
+       prompt either. Pressing the "Refl" button (#reflection-button) removes
+       this rule's effect by starting the stream on purpose. */
+    .reflection {
+        display: none;
+    }
+
+    /* Pressing "Refl" is an explicit request for the effect, so honour it even
+       when reduced motion is set. */
+    .reflection.live {
+        display: block;
     }
 
     /* No collapse animation, just a quick fade so the overlay still clears */

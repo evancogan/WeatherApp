@@ -2,25 +2,91 @@ const TARGET_VOLUME = 0.35;
 const FADE_STEP_MS = 30;
 const FADE_DURATION_MS = 1500;
 const POWER_ON_FALLBACK_MS = 800;
+const PREFS_KEY = "wx1.prefs";
 
 let lastPayload = null;
 let currentUnit = "F";
 let fadeTimer = null;
+let reflectionStream = null;
 
 const cityForm = document.getElementById("city-form");
 const cityInput = document.getElementById("city-input");
 const toggleButton = document.getElementById("toggle-button");
 const muteButton = document.getElementById("mute-button");
+const reflectionButton = document.getElementById("reflection-button");
 const panel = document.getElementById("broadcast-panel");
 
 const tuneInOverlay = document.getElementById("tune-in");
 const channelAudio = document.getElementById("channel-audio");
+const reflectionLayer = document.getElementById("reflection");
+const reflectionVideo = document.getElementById("reflection-video");
 
 const currentIcon = document.getElementById("current-icon");
 const currentTemp = document.getElementById("current-temp");
 const currentCity = document.getElementById("current-city");
 const currentCondition = document.getElementById("current-condition");
 const forecastStrip = document.getElementById("forecast-strip");
+
+/* All user preferences live under one localStorage key as a single JSON object.
+   Both accessors swallow errors because localStorage throws outright in some
+   private-browsing modes, and a lost preference should never break the page. */
+function loadPrefs() {
+    try {
+        return JSON.parse(localStorage.getItem(PREFS_KEY)) || {};
+    } catch (err) {
+        return {};
+    }
+}
+
+function savePref(key, value) {
+    prefs[key] = value;
+    try {
+        localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    } catch (err) {
+        console.warn("Preferences cannot be saved, settings will reset on reload.");
+    }
+}
+
+const prefs = loadPrefs();
+
+/* Every toggle below routes through one of these setters, whether it was driven
+   by a click or restored from a saved preference on load. Sharing the path is
+   what keeps the restored button labels from drifting out of step with the
+   state they describe. */
+function setUnit(unit) {
+    currentUnit = unit;
+    toggleButton.textContent = `Switch to ${currentUnit === "F" ? "°C" : "°F"}`;
+    savePref("unit", currentUnit);
+    if (lastPayload) {
+        render(lastPayload);
+    }
+}
+
+function setMuted(muted) {
+    channelAudio.muted = muted;
+    muteButton.textContent = muted ? "♪ Off" : "♪ On";
+    muteButton.setAttribute("aria-pressed", String(muted));
+    muteButton.classList.toggle("is-off", muted);
+    muteButton.title = muted ? "Unmute music" : "Mute music";
+    savePref("muted", muted);
+}
+
+function showReflectionState(on) {
+    reflectionButton.setAttribute("aria-pressed", String(on));
+    reflectionButton.classList.toggle("is-off", !on);
+    reflectionButton.title = on
+        ? "Turn off screen reflection"
+        : "Show the room reflected in the screen";
+}
+
+/* Only a deliberate press, or a camera that refused to start after one, should
+   be written down. Suppressing the reflection for reduced motion updates the
+   button without recording a choice the viewer never made, so the effect comes
+   back on its own if they later turn reduced motion off. */
+function setReflection(on) {
+    showReflectionState(on);
+    savePref("reflection", on);
+}
 
 function fadeInAudio() {
     const stepCount = Math.round(FADE_DURATION_MS / FADE_STEP_MS);
@@ -44,6 +110,49 @@ function hideOverlay() {
     tuneInOverlay.hidden = true;
 }
 
+/* Feeds the front camera into the reflection overlay. Resolves to whether the
+   stream actually started, so the caller can show the true state rather than
+   assuming success. */
+async function startReflection() {
+    // getUserMedia only exists on secure origins. localhost counts as one, but
+    // reaching this server over a LAN address does not, and the API is simply
+    // absent there rather than failing loudly.
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn("Screen reflection needs a secure origin such as localhost.");
+        return false;
+    }
+
+    try {
+        reflectionStream = await navigator.mediaDevices.getUserMedia({
+            // A low capture size on purpose: the overlay blurs the image down to
+            // vague shapes anyway, so anything sharper is wasted work.
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+        });
+        reflectionVideo.srcObject = reflectionStream;
+        await reflectionVideo.play();
+    } catch (err) {
+        console.warn("Screen reflection unavailable:", err);
+        stopReflection();
+        return false;
+    }
+
+    reflectionLayer.classList.add("live");
+    return true;
+}
+
+function stopReflection() {
+    reflectionLayer.classList.remove("live");
+    if (reflectionStream) {
+        // Releasing every track is what actually puts the camera indicator light
+        // out. Without this the hardware stays live while the overlay reads as
+        // switched off.
+        reflectionStream.getTracks().forEach((track) => track.stop());
+        reflectionStream = null;
+    }
+    reflectionVideo.srcObject = null;
+}
+
 /* Dismiss the standby screen and start the channel music. The click itself is
    what satisfies the browser's autoplay policy, so playback must start here. */
 function powerOn() {
@@ -58,6 +167,18 @@ function powerOn() {
         playback.then(fadeInAudio).catch((err) => {
             console.error("Channel music unavailable:", err);
         });
+    }
+
+    // The camera is requested on this same click for the same reason the music
+    // is: it is the one user gesture the browser will accept. Skipped when the
+    // viewer has asked for reduced motion, which also spares them the permission
+    // prompt, and skipped when they previously switched the reflection off.
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefs.reflection !== false && !reduceMotion) {
+        // A denied prompt records the off state, since that was a real answer.
+        startReflection().then(setReflection);
+    } else {
+        showReflectionState(false);
     }
 }
 
@@ -140,18 +261,20 @@ cityForm.addEventListener("submit", (event) => {
 });
 
 toggleButton.addEventListener("click", () => {
-    currentUnit = currentUnit === "F" ? "C" : "F";
-    toggleButton.textContent = `Switch to ${currentUnit === "F" ? "°C" : "°F"}`;
-    if (lastPayload) {
-        render(lastPayload);
-    }
+    setUnit(currentUnit === "F" ? "C" : "F");
 });
 
 muteButton.addEventListener("click", () => {
-    channelAudio.muted = !channelAudio.muted;
-    muteButton.textContent = channelAudio.muted ? "♪ Off" : "♪ On";
-    muteButton.setAttribute("aria-pressed", String(channelAudio.muted));
-    muteButton.title = channelAudio.muted ? "Unmute music" : "Mute music";
+    setMuted(!channelAudio.muted);
+});
+
+reflectionButton.addEventListener("click", async () => {
+    if (reflectionStream) {
+        stopReflection();
+        setReflection(false);
+        return;
+    }
+    setReflection(await startReflection());
 });
 
 tuneInOverlay.addEventListener("click", powerOn, { once: true });
@@ -160,5 +283,12 @@ tuneInOverlay.addEventListener("click", powerOn, { once: true });
 channelAudio.addEventListener("error", () => {
     console.warn("No channel music found at music/theme.mp3 -- running silent.");
 }, { once: true });
+
+/* Restore saved preferences before the first fetch. The reflection is not
+   restored here because the camera cannot start without the power-on click, so
+   powerOn() handles it instead. */
+setUnit(prefs.unit === "C" ? "C" : "F");
+setMuted(prefs.muted === true);
+showReflectionState(prefs.reflection !== false);
 
 fetchWeather("");
