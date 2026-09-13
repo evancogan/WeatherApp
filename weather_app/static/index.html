@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <button type="button" class="tune-in" id="tune-in">
+        <span class="tune-in-ident">WX-1</span>
+        <span class="tune-in-prompt">&#9658; Tune In</span>
+        <span class="tune-in-hint">click to power on</span>
+    </button>
+
     <div class="scanlines"></div>
 
     <header class="channel-header">
@@ -21,6 +27,7 @@
             <input type="text" id="city-input" placeholder="City, State" autocomplete="off">
             <button type="submit" id="fetch-button">Fetch Weather</button>
             <button type="button" id="toggle-button">Switch to &deg;C</button>
+            <button type="button" id="mute-button">Mute Music</button>
         </form>
 
         <section class="current-conditions" id="current-conditions">
@@ -32,6 +39,9 @@
 
         <section class="forecast-strip" id="forecast-strip"></section>
     </main>
+
+    <!-- Drop your own track at static/music/theme.mp3 -- see music/README.md -->
+    <audio id="channel-audio" src="music/theme.mp3" loop preload="auto"></audio>
 
     <script src="app.js"></script>
 </body>

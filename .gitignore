@@ -3,3 +3,8 @@
 /weather3b.py
 __pycache__/
 *.pyc
+
+# Personal music, not redistributed with the app
+weather_app/static/music/*
+!weather_app/static/music/.gitkeep
+!weather_app/static/music/README.md

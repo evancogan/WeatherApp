@@ -82,6 +82,90 @@ body {
     99%           { opacity: 1; }
 }
 
+/* Standby screen: the click that powers the set on is also what unlocks audio */
+.tune-in {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    border: none;
+    background: #000000;
+    color: #ffd60a;
+    font-family: inherit;
+    cursor: pointer;
+    transform-origin: center;
+}
+
+.tune-in-ident {
+    font-family: 'Archivo Black', Arial, sans-serif;
+    font-size: 3rem;
+    letter-spacing: 4px;
+    text-shadow: 0 0 12px rgba(255, 214, 10, 0.5);
+}
+
+.tune-in-prompt {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: #00b4d8;
+    animation: tune-in-blink 1.4s steps(1, end) infinite;
+}
+
+.tune-in-hint {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: #ffffff;
+    opacity: 0.5;
+}
+
+/* Collapse to a bright scanline, flash, then die out -- a CRT powering up */
+.tune-in.powered-on {
+    pointer-events: none;
+    animation: crt-power-on 600ms ease-in forwards;
+}
+
+.tune-in.powered-on .tune-in-ident,
+.tune-in.powered-on .tune-in-prompt,
+.tune-in.powered-on .tune-in-hint {
+    opacity: 0;
+    transition: opacity 120ms linear;
+}
+
+@keyframes tune-in-blink {
+    0%, 60%  { opacity: 1; }
+    61%, 99% { opacity: 0.15; }
+    100%     { opacity: 1; }
+}
+
+@keyframes crt-power-on {
+    0% {
+        background: #000000;
+        transform: scaleY(1);
+        opacity: 1;
+    }
+    45% {
+        background: #ffffff;
+        transform: scaleY(0.015);
+        opacity: 1;
+    }
+    70% {
+        background: #ffffff;
+        transform: scaleY(0.015) scaleX(0.6);
+        opacity: 0.9;
+    }
+    100% {
+        background: #ffffff;
+        transform: scaleY(0.015) scaleX(0);
+        opacity: 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .scanlines,
     .scanlines::before,
@@ -91,6 +175,17 @@ body {
 
     .scanlines::after {
         display: none;
+    }
+
+    .tune-in-prompt {
+        animation: none;
+    }
+
+    /* No collapse animation, just a quick fade so the overlay still clears */
+    .tune-in.powered-on {
+        animation: none;
+        opacity: 0;
+        transition: opacity 150ms linear;
     }
 }
 
