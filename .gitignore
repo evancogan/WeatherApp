@@ -1,3 +1,5 @@
 /.vscode
 /14b.py
 /weather3b.py
+__pycache__/
+*.pyc

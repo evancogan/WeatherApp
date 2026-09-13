@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Channel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <header class="channel-header">
+        <span class="channel-ident">WX-1</span>
+        <span class="channel-tagline">Your Local Forecast</span>
+    </header>
+
+    <main class="broadcast-panel" id="broadcast-panel">
+        <form id="city-form" class="controls">
+            <input type="text" id="city-input" placeholder="City, State" autocomplete="off">
+            <button type="submit" id="fetch-button">Fetch Weather</button>
+            <button type="button" id="toggle-button">Switch to &deg;C</button>
+        </form>
+
+        <section class="current-conditions" id="current-conditions">
+            <img id="current-icon" class="icon icon-large" src="" alt="" hidden>
+            <div class="current-temp" id="current-temp">--&deg;</div>
+            <div class="current-city" id="current-city">City: N/A</div>
+            <div class="current-condition" id="current-condition">Condition: N/A</div>
+        </section>
+
+        <section class="forecast-strip" id="forecast-strip"></section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
