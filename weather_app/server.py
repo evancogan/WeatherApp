@@ -11,13 +11,12 @@ def _day_summary(day):
     hourly = day.get("hourly", [])
     midday = hourly[len(hourly) // 2] if hourly else {}
     desc = midday.get("weatherDesc", [{"value": "Unknown"}])[0]["value"]
-    desc_lower = desc.lower()
     return {
         "date": day.get("date"),
         "max_temp_c": float(day["maxtempC"]),
         "min_temp_c": float(day["mintempC"]),
         "condition": desc,
-        "icon": icon_for(desc_lower),
+        "icon": icon_for(midday.get("weatherCode", 0)),
     }
 
 
@@ -41,14 +40,14 @@ def api_weather():
 
     current = weather_data["current_condition"][0]
     condition = current["weatherDesc"][0]["value"]
-    condition_lower = condition.lower()
+    weather_code = current.get("weatherCode", 0)
 
     return jsonify({
         "city": city_name,
         "temp_c": float(current["temp_C"]),
         "condition": condition,
-        "icon": icon_for(condition_lower),
-        "color_hex": color_hex_for(condition_lower),
+        "icon": icon_for(weather_code),
+        "color_hex": color_hex_for(weather_code),
         "forecast": [_day_summary(day) for day in weather_data.get("weather", [])[:3]],
     })
 
