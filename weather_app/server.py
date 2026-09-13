@@ -87,12 +87,23 @@ def _almanac(weather_data, today):
 
 
 def _observations(current):
-    """Footer data-bar fields, straight off the current conditions block."""
+    """Footer data-bar fields, straight off the current conditions block.
+
+    Wider than the three readings the bar used to print, because the bar now
+    cycles through them one at a time rather than showing a fixed row: the
+    more genuinely current readings there are, the longer it goes before it
+    repeats itself.
+    """
     return {
         "visibility_miles": current.get("visibilityMiles", "--"),
         "pressure_inches": current.get("pressureInches", "--"),
         "wind_dir": current.get("winddir16Point", "--"),
         "wind_mph": current.get("windspeedMiles", "--"),
+        "humidity": current.get("humidity", "--"),
+        "feels_like_c": current.get("FeelsLikeC", "--"),
+        "cloud_cover": current.get("cloudcover", "--"),
+        "precip_inches": current.get("precipInches", "--"),
+        "uv_index": current.get("uvIndex", "--"),
     }
 
 

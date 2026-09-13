@@ -14,6 +14,13 @@ const HOROSCOPE_CARD_STAGGER_MS = 80;
 // more text than any other screen carries, and the typing eats the first
 // seconds of it, so the standard interval left no time to actually read.
 const HOROSCOPE_DURATION_MS = 24000;
+// The footer types slower than the horoscope cards: one line at a time is meant
+// to be watched arriving, where twelve readings at once only had to land fast.
+const FOOTER_TYPE_MS = 32;
+// How long a finished reading sits before the next one replaces it. Deliberately
+// not a divisor of SCREEN_DURATION_MS, so the bar does not fall into step with
+// the screen rotation and show the same reading on the same screen every time.
+const FOOTER_HOLD_MS = 4300;
 const MAGNET_MAX_SCALE = 46;
 const MAGNET_RAMP_MS = 120;
 const MAGNET_IDLE_MS = 120;
@@ -42,6 +49,12 @@ let rotationPaused = false;
 let rotationTimeout = null;
 let activeScreenIndex = 0;
 let lastSeenDay = null;
+// The footer's cycle survives re-renders: a °F/°C toggle rebuilds the lines but
+// footerIndex stays put, so the bar carries on from the reading it was showing
+// rather than snapping back to the first one.
+let footerLines = [];
+let footerIndex = 0;
+let footerTimer = null;
 
 const muteButton = document.getElementById("mute-button");
 const reflectionButton = document.getElementById("reflection-button");
@@ -574,26 +587,124 @@ function typeHoroscope() {
     });
 }
 
-/* ---- Footer data bar ---- */
+/* ---- Footer data bar ----
+   One reading at a time, typed in and then replaced, rather than a fixed row of
+   three. The row was the same three fields under every screen, which read as
+   stale next to a map or an almanac; a bar that cycles can carry sunrise, the
+   moon and the day's range as well, and each line gets the whole width instead
+   of a third of it.
+
+   Readings that came back as "--" are dropped rather than printed blank, so the
+   cycle is only ever as long as the data actually supports. */
+
+function footerFacts(payload) {
+    const obs = payload.observations || {};
+    const almanac = payload.almanac || {};
+    const today = (payload.forecast || [])[0];
+    const sun = (almanac.days || [])[0];
+    const facts = [];
+
+    const add = (value, text) => {
+        if (value !== undefined && value !== null && value !== "" && value !== "--") {
+            facts.push(text);
+        }
+    };
+
+    add(obs.wind_dir, `WIND: ${obs.wind_dir} AT ${obs.wind_mph} MPH`);
+    if (obs.feels_like_c !== undefined && obs.feels_like_c !== "--") {
+        const feels = celsiusToDisplay(Number(obs.feels_like_c));
+        add(obs.feels_like_c, `FEELS LIKE: ${feels.value.toFixed(0)}${feels.unit}`);
+    }
+    add(obs.humidity, `HUMIDITY: ${obs.humidity}%`);
+    add(obs.pressure_inches, `PRESSURE: ${obs.pressure_inches} IN`);
+    add(obs.visibility_miles, `VISIBILITY: ${obs.visibility_miles} MI`);
+    add(obs.cloud_cover, `CLOUD COVER: ${obs.cloud_cover}%`);
+    add(obs.precip_inches, `PRECIP TODAY: ${obs.precip_inches} IN`);
+    add(obs.uv_index, `UV INDEX: ${obs.uv_index}`);
+
+    if (today) {
+        const high = celsiusToDisplay(today.max_temp_c);
+        const low = celsiusToDisplay(today.min_temp_c);
+        facts.push(
+            `TODAY: HIGH ${high.value.toFixed(0)}${high.unit} / LOW ${low.value.toFixed(0)}${low.unit}`
+        );
+    }
+    if (sun) {
+        add(sun.sunrise, `SUNRISE: ${sun.sunrise}`);
+        add(sun.sunset, `SUNSET: ${sun.sunset}`);
+    }
+    add(almanac.moon_phase, `MOON: ${String(almanac.moon_phase).toUpperCase()}, ${almanac.moon_illumination}% LIT`);
+
+    return facts;
+}
+
+function stopFooterCycle() {
+    clearTimeout(footerTimer);
+    footerTimer = null;
+}
+
+function typeFooterFact() {
+    if (footerLines.length === 0) {
+        return;
+    }
+    footerIndex = ((footerIndex % footerLines.length) + footerLines.length) % footerLines.length;
+    const text = footerLines[footerIndex];
+
+    const item = document.createElement("span");
+    item.className = "footer-item is-typing";
+    broadcastFooter.innerHTML = "";
+    broadcastFooter.appendChild(item);
+
+    let typed = 0;
+    const step = () => {
+        typed += 1;
+        item.textContent = text.slice(0, typed);
+        if (typed < text.length) {
+            footerTimer = setTimeout(step, FOOTER_TYPE_MS);
+            return;
+        }
+        // The caret stops blinking once the line is finished, then the line
+        // sits long enough to actually be read before the next one replaces it.
+        item.classList.remove("is-typing");
+        footerTimer = setTimeout(() => {
+            footerIndex += 1;
+            typeFooterFact();
+        }, FOOTER_HOLD_MS);
+    };
+    footerTimer = setTimeout(step, FOOTER_TYPE_MS);
+}
 
 function renderFooter(payload) {
-    const obs = payload.observations || {};
+    stopFooterCycle();
+    footerLines = footerFacts(payload);
     broadcastFooter.innerHTML = "";
 
-    const items = [
-        `VISIB: ${obs.visibility_miles} MI`,
-        `PRESSURE: ${obs.pressure_inches} IN`,
-        `WIND: ${obs.wind_dir} ${obs.wind_mph} MPH`,
-    ];
-    for (const text of items) {
-        const span = document.createElement("span");
-        span.className = "footer-item";
-        span.textContent = text;
-        broadcastFooter.appendChild(span);
+    if (footerLines.length === 0) {
+        return;
     }
+
+    // Text that assembles itself is motion like any other, so reduced motion
+    // gets a plain row of the first few readings and no cycle at all -- the
+    // same bar this footer used to be.
+    if (prefersReducedMotion()) {
+        broadcastFooter.classList.remove("is-cycling");
+        for (const text of footerLines.slice(0, 3)) {
+            const item = document.createElement("span");
+            item.className = "footer-item";
+            item.textContent = text;
+            broadcastFooter.appendChild(item);
+        }
+        return;
+    }
+
+    broadcastFooter.classList.add("is-cycling");
+    typeFooterFact();
 }
 
 function renderFooterError() {
+    stopFooterCycle();
+    footerLines = [];
+    broadcastFooter.classList.remove("is-cycling");
     broadcastFooter.innerHTML = "";
 }
 

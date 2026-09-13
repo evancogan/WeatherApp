@@ -334,9 +334,15 @@ body::before {
        so turning this up amplifies faces and lamps while true black in the room
        stays at zero and contributes nothing. Roughly: 1.5 is a faint smudge, 2.5
        reads clearly on movement, 4 looks like a lit room behind the glass, and
-       past about 6 the highlights blow out to flat white. */
+       past about 6 the highlights blow out to flat white.
+
+       Calibrate this in a lit room, not a dark one. The filter amplifies
+       whatever light the room actually has, so a value picked at night reads
+       far stronger by day -- 2.6 was set after dark and turned out to put a
+       clearly recognisable person on the glass in daylight. The effect is
+       meant to be the room suggested behind the picture, not a mirror. */
     filter: blur(7px) saturate(0.5) contrast(1.35)
-            brightness(var(--reflection-strength, 2.6));
+            brightness(var(--reflection-strength, 1.8));
 }
 
 /* Filter definitions render nothing themselves; collapse the SVG to nothing so
@@ -760,6 +766,13 @@ body::before {
     border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+/* Centred is right for the static row, but a line that types itself would grow
+   out from the middle and drag its own start leftwards on every character. The
+   cycling bar anchors to the left so only the last character ever moves. */
+.broadcast-footer.is-cycling {
+    justify-content: flex-start;
+}
+
 .footer-item {
     font-size: 1.2rem;
     letter-spacing: 1px;
@@ -1170,7 +1183,8 @@ body::before {
 
 /* The caret only exists while a card is mid-type, so a finished reading is
    just text. Steps(2) gives a hard blink rather than a fade. */
-.horoscope-reading.is-typing::after {
+.horoscope-reading.is-typing::after,
+.footer-item.is-typing::after {
     content: "_";
     animation: horoscope-caret 500ms steps(2, end) infinite;
 }
