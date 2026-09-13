@@ -24,6 +24,16 @@ body {
     position: fixed;
     inset: 0;
     pointer-events: none;
+    overflow: hidden;
+    z-index: 9999;
+    animation: crt-flicker 3s steps(1, end) infinite;
+}
+
+/* Fine raster lines, crawling slowly downward */
+.scanlines::before {
+    content: "";
+    position: absolute;
+    inset: -100% 0;
     background: repeating-linear-gradient(
         to bottom,
         rgba(255, 255, 255, 0.05) 0px,
@@ -31,7 +41,57 @@ body {
         transparent 2px,
         transparent 4px
     );
-    z-index: 10;
+    will-change: transform;
+    animation: scanline-crawl 1.2s linear infinite;
+}
+
+/* Wide "hum bar" sweeping down the tube */
+.scanlines::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 28vh;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(255, 255, 255, 0.03) 35%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.03) 65%,
+        transparent 100%
+    );
+    will-change: transform;
+    animation: scanline-roll 7s linear infinite;
+}
+
+/* Travels exactly one stripe period, so the loop has no visible seam */
+@keyframes scanline-crawl {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(0, 4px, 0); }
+}
+
+@keyframes scanline-roll {
+    from { transform: translate3d(0, -28vh, 0); }
+    to   { transform: translate3d(0, 100vh, 0); }
+}
+
+@keyframes crt-flicker {
+    0%, 97%, 100% { opacity: 1; }
+    98%           { opacity: 0.82; }
+    99%           { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scanlines,
+    .scanlines::before,
+    .scanlines::after {
+        animation: none;
+    }
+
+    .scanlines::after {
+        display: none;
+    }
 }
 
 .channel-header {
