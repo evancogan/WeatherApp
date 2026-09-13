@@ -306,11 +306,14 @@ body::before {
     mix-blend-mode: screen;
     opacity: 0;
     transition: opacity 1500ms ease;
-    /* Glare gathers toward the curved edges and thins out over the picture. */
+    /* Glare gathers toward the curved edges and thins out over the picture. The
+       alphas here used to run 0.3 to 0.72 to 1, which let the layer reach full
+       strength around the rim; they are held well under 1 now so even the
+       brightest part of the glare stays a shadow on the glass. */
     -webkit-mask-image: radial-gradient(ellipse 78% 72% at 50% 45%,
-        rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.72) 55%, #000 100%);
+        rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.6) 100%);
     mask-image: radial-gradient(ellipse 78% 72% at 50% 45%,
-        rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.72) 55%, #000 100%);
+        rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.32) 55%, rgba(0, 0, 0, 0.6) 100%);
 }
 
 /* Fades the layer in once the camera stream is live. This is deliberately a
@@ -332,17 +335,23 @@ body::before {
        is, and it drives brightness because brightness has no upper limit. Screen
        blending only ever adds light, and brightness multiplies rather than adds,
        so turning this up amplifies faces and lamps while true black in the room
-       stays at zero and contributes nothing. Roughly: 1.5 is a faint smudge, 2.5
-       reads clearly on movement, 4 looks like a lit room behind the glass, and
-       past about 6 the highlights blow out to flat white.
+       stays at zero and contributes nothing. Roughly: below 1 only the brightest
+       things in the room (a lamp, a window, the highlight on a moving shape)
+       clear the threshold at all, 1.5 is a faint smudge, 2.5 reads clearly on
+       movement, 4 looks like a lit room behind the glass, and past about 6 the
+       highlights blow out to flat white.
 
        Calibrate this in a lit room, not a dark one. The filter amplifies
        whatever light the room actually has, so a value picked at night reads
-       far stronger by day -- 2.6 was set after dark and turned out to put a
-       clearly recognisable person on the glass in daylight. The effect is
-       meant to be the room suggested behind the picture, not a mirror. */
-    filter: blur(7px) saturate(0.5) contrast(1.35)
-            brightness(var(--reflection-strength, 1.8));
+       far stronger by day. 2.6 was set after dark and turned out to put a
+       clearly recognisable person on the glass in daylight; 1.8 was still a
+       readable picture of the room rather than a hint of one. At 0.8 the room
+       registers only as a soft shadow passing over the glass, which is what the
+       effect is meant to be. The heavier blur and the flattened saturation and
+       contrast are part of that: they were tuned to keep shapes legible, and
+       shapes are exactly what should not be legible now. */
+    filter: blur(16px) saturate(0.2) contrast(1.05)
+            brightness(var(--reflection-strength, 0.8));
 }
 
 /* Filter definitions render nothing themselves; collapse the SVG to nothing so

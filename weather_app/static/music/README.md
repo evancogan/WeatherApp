@@ -1,24 +1,31 @@
-# Channel Music
+# Channel Audio
 
-Drop your own background track in this folder, named **`theme.mp3`**.
+Two files live here, both optional:
 
 ```
-weather_app/static/music/theme.mp3
+weather_app/static/music/theme.mp3        background track, loops forever
+weather_app/static/music/soundeffect.mp3  plays once when the set powers on
 ```
 
 That's it, no code changes needed. The Flask app mounts `static/` at the web
-root (`static_url_path=""` in `server.py`), so the file is served at
-`http://localhost:5000/music/theme.mp3` and `index.html` already points at it.
+root (`static_url_path=""` in `server.py`), so the files are served at
+`http://localhost:5000/music/theme.mp3` and
+`http://localhost:5000/music/soundeffect.mp3`, and `index.html` already points
+at both.
 
-Click **TUNE IN** on the page to power the channel on; the track fades in and
-loops forever.
+Click **TUNE IN** on the page to power the channel on. The sound effect fires
+immediately at full volume while the theme fades in underneath it and loops.
+The mute button silences both.
 
 ## Notes
 
 - Audio files in this folder are git-ignored on purpose. Only this README and
-  `.gitkeep` are tracked, so your music never ends up in the repo.
+  `.gitkeep` are tracked, so your audio never ends up in the repo.
+- Keep `soundeffect.mp3` short, a second or two. It is meant to land on the
+  same beat as the picture coming up, not to play over the theme.
 - MP3 is the safe cross-browser default. If you'd rather use OGG or WAV, swap
-  the single `src` on `#channel-audio` in `index.html` for `<source>` elements:
+  the single `src` on `#channel-audio` (or `#power-on-audio`) in `index.html`
+  for `<source>` elements:
 
   ```html
   <audio id="channel-audio" loop preload="auto">
@@ -27,4 +34,5 @@ loops forever.
   </audio>
   ```
 
-- If no file is present the app still works. It just powers on silently.
+- If either file is missing the app still works. It just powers on without that
+  sound.

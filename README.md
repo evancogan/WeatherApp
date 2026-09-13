@@ -11,11 +11,11 @@ python weather_app/server.py
 
 Then open http://localhost:5000 in a browser and click **TUNE IN** to power the channel on.
 
-### Channel music
+### Channel audio
 
-Drop your own background track at `weather_app/static/music/theme.mp3`. No code changes needed. Clicking **TUNE IN** starts it, fades it in, and loops it forever. The browser blocks audio until you interact with the page, which is exactly what that standby screen is for.
+Drop your own background track at `weather_app/static/music/theme.mp3` and a power-on sound effect at `weather_app/static/music/soundeffect.mp3`. No code changes needed. Clicking **TUNE IN** fires the effect immediately and fades the theme in underneath it, looping forever. The browser blocks audio until you interact with the page, which is exactly what that standby screen is for. The mute button silences both.
 
-Audio files in `weather_app/static/music/` are git-ignored, so your music stays out of the repo. If the file isn't there, the app powers on and runs silently. See [weather_app/static/music/README.md](weather_app/static/music/README.md) for other formats.
+Audio files in `weather_app/static/music/` are git-ignored, so your audio stays out of the repo. If either file isn't there, the app powers on without that sound. See [weather_app/static/music/README.md](weather_app/static/music/README.md) for other formats.
 
 ### Weather icons
 

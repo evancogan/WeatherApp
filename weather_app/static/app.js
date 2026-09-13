@@ -1,4 +1,8 @@
 const TARGET_VOLUME = 0.35;
+// The power-on effect sits above the music because it plays against a track
+// that is still fading up from silence, and it is the sound of the set itself
+// rather than something coming out of it.
+const POWER_ON_VOLUME = 0.7;
 const FADE_STEP_MS = 30;
 const FADE_DURATION_MS = 1500;
 const POWER_ON_FALLBACK_MS = 800;
@@ -66,6 +70,7 @@ const broadcastFooter = document.getElementById("broadcast-footer");
 
 const tuneInOverlay = document.getElementById("tune-in");
 const channelAudio = document.getElementById("channel-audio");
+const powerOnAudio = document.getElementById("power-on-audio");
 const reflectionLayer = document.getElementById("reflection");
 const reflectionVideo = document.getElementById("reflection-video");
 
@@ -123,6 +128,10 @@ function setUnit(unit) {
 
 function setMuted(muted) {
     channelAudio.muted = muted;
+    // The power-on effect answers to the same switch. Muting the channel and
+    // then being startled by the set switching on would read as a broken
+    // control rather than two separate sounds.
+    powerOnAudio.muted = muted;
     muteButton.setAttribute("aria-pressed", String(muted));
     muteButton.classList.toggle("is-off", muted);
     muteButton.title = muted ? "Unmute music" : "Mute music";
@@ -214,13 +223,25 @@ function stopReflection() {
     reflectionVideo.srcObject = null;
 }
 
-/* Dismiss the standby screen and start the channel music. The click itself is
-   what satisfies the browser's autoplay policy, so playback must start here. */
+/* Dismiss the standby screen, play the power-on effect and start the channel
+   music. The click itself is what satisfies the browser's autoplay policy, so
+   playback must start here. */
 function powerOn() {
     tuneInOverlay.classList.add("powered-on");
     tuneInOverlay.addEventListener("animationend", hideOverlay, { once: true });
     // Reduced-motion (and any dropped animationend) still needs the overlay gone.
     setTimeout(hideOverlay, POWER_ON_FALLBACK_MS);
+
+    // Straight in at full volume and never faded: this one is meant to land on
+    // the same beat as the picture, alongside the music rather than ahead of it.
+    powerOnAudio.volume = POWER_ON_VOLUME;
+    powerOnAudio.currentTime = 0;
+    const effect = powerOnAudio.play();
+    if (effect) {
+        effect.catch((err) => {
+            console.warn("Power-on sound unavailable:", err);
+        });
+    }
 
     channelAudio.volume = 0;
     const playback = channelAudio.play();
@@ -1031,6 +1052,11 @@ document.addEventListener("keydown", (event) => {
 // No theme.mp3 in the folder is a supported state -- the channel just runs silent.
 channelAudio.addEventListener("error", () => {
     console.warn("No channel music found at music/theme.mp3 -- running silent.");
+}, { once: true });
+
+// Likewise for the effect: the set still switches on, just without the sound.
+powerOnAudio.addEventListener("error", () => {
+    console.warn("No power-on sound found at music/soundeffect.mp3 -- powering on quietly.");
 }, { once: true });
 
 /* The clock already visits every second, so it is also where the date rolling
