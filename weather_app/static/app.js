@@ -12,6 +12,12 @@ const MAGNET_IDLE_MS = 120;
 // visibly cutting short -- copies that are still mid-fade.
 const MAGNET_TRAIL_COUNT = 24;
 const MAGNET_TRAIL_MIN_DIST = 26;
+// How small the lens renders at rest/slow movement (a fraction of its full
+// 20vmin footprint) and the speed, in pixels per millisecond, at which it
+// reaches full size. Below MAGNET_SPEED_FOR_FULL_SIZE it scales linearly
+// between the two.
+const MAGNET_MIN_SIZE_SCALE = 0.18;
+const MAGNET_SPEED_FOR_FULL_SIZE = 1.6;
 
 const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -404,6 +410,9 @@ let magnetIdleTimeout = null;
 let magnetRampFrame = null;
 let magnetLastTrailX = null;
 let magnetLastTrailY = null;
+let magnetLastMoveTime = null;
+let magnetLastMoveX = null;
+let magnetLastMoveY = null;
 
 // A small pool of reused elements rather than creating and destroying one per
 // drop, so a fast, sustained swipe cannot leak nodes.
@@ -439,15 +448,43 @@ function rampMagnetScale(target) {
 // Removing the class, forcing a reflow, then re-adding it is the standard way
 // to restart a CSS animation on an element whose previous run may still be
 // mid-flight, which matters here since the pool reuses each element often.
-function dropMagnetTrail(x, y) {
+function dropMagnetTrail(x, y, sizeScale) {
     const trail = magnetTrailPool[magnetTrailCursor];
     magnetTrailCursor = (magnetTrailCursor + 1) % magnetTrailPool.length;
 
     trail.classList.remove("is-fading");
     trail.style.left = `${x}px`;
     trail.style.top = `${y}px`;
+    trail.style.setProperty("--magnet-scale", sizeScale);
     void trail.offsetWidth;
     trail.classList.add("is-fading");
+}
+
+// Pointer speed, in pixels per millisecond, since the last call -- this is
+// what a slight movement stays small and only a sustained, faster movement
+// grows toward full size, rather than the lens jumping to full size the
+// instant it starts moving at all. The very first call after a period of no
+// movement (including right after the lens went idle, since that resets
+// these) always reads as slow, because there is no prior sample yet to
+// compare against -- which is exactly the "starts small" behavior wanted.
+function magnetSizeScale(x, y) {
+    const now = performance.now();
+    if (magnetLastMoveTime === null) {
+        magnetLastMoveTime = now;
+        magnetLastMoveX = x;
+        magnetLastMoveY = y;
+        return MAGNET_MIN_SIZE_SCALE;
+    }
+
+    const dt = Math.max(now - magnetLastMoveTime, 1);
+    const distance = Math.hypot(x - magnetLastMoveX, y - magnetLastMoveY);
+    const speed = distance / dt;
+    magnetLastMoveTime = now;
+    magnetLastMoveX = x;
+    magnetLastMoveY = y;
+
+    const grown = Math.min(speed / MAGNET_SPEED_FOR_FULL_SIZE, 1);
+    return MAGNET_MIN_SIZE_SCALE + (1 - MAGNET_MIN_SIZE_SCALE) * grown;
 }
 
 function deactivateMagnetLens() {
@@ -456,23 +493,30 @@ function deactivateMagnetLens() {
     rampMagnetScale(0);
     magnetLastTrailX = null;
     magnetLastTrailY = null;
+    magnetLastMoveTime = null;
+    magnetLastMoveX = null;
+    magnetLastMoveY = null;
 }
 
 // Called on every qualifying pointermove: the live head snaps straight to the
-// pointer (no lag), and a trail copy drops every time the pointer has covered
-// MAGNET_TRAIL_MIN_DIST since the last drop -- covering more ground faster
-// drops copies closer together in time, which is what makes a fast swipe read
-// as a continuous smear and a slow one read as barely any trail at all.
-// Idles back off automatically a short beat after movement stops.
+// pointer (no lag), sized by current speed, and a trail copy drops every time
+// the pointer has covered MAGNET_TRAIL_MIN_DIST since the last drop --
+// covering more ground faster drops copies closer together in time, which is
+// what makes a fast swipe read as a continuous smear and a slow one read as
+// barely any trail at all. Idles back off automatically a short beat after
+// movement stops.
 function activateMagnetLens(x, y) {
+    const sizeScale = magnetSizeScale(x, y);
+
     magnetLens.style.left = `${x}px`;
     magnetLens.style.top = `${y}px`;
+    magnetLens.style.setProperty("--magnet-scale", sizeScale);
 
     if (magnetLastTrailX === null) {
         magnetLastTrailX = x;
         magnetLastTrailY = y;
     } else if (Math.hypot(x - magnetLastTrailX, y - magnetLastTrailY) >= MAGNET_TRAIL_MIN_DIST) {
-        dropMagnetTrail(x, y);
+        dropMagnetTrail(x, y, sizeScale);
         magnetLastTrailX = x;
         magnetLastTrailY = y;
     }

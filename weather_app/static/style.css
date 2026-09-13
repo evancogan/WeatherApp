@@ -291,7 +291,13 @@ body {
    Sized as a broad-ish area rather than a tight spot, so it reads as
    interference passing across the picture, not a magnifying glass. A hard
    circular edge would look like a cutout at this size, so mask-image feathers
-   the distortion out toward the edge instead of stopping abruptly. */
+   the distortion out toward the edge instead of stopping abruptly.
+
+   --magnet-scale (set by app.js, 0-1) is how small movement stays small: the
+   element's own footprint is always the full 20vmin, but it renders shrunk
+   toward its center point at low speed and grows toward full size as the
+   pointer picks up speed, rather than always appearing at full size the
+   instant it starts moving. */
 .magnet-lens,
 .magnet-trail {
     position: fixed;
@@ -303,14 +309,17 @@ body {
     border-radius: 50%;
     pointer-events: none;
     opacity: 0;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(var(--magnet-scale, 1));
     -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
     mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
     backdrop-filter: url(#magnet-ripple);
 }
 
 .magnet-lens {
-    transition: opacity 120ms ease-out;
+    /* Only the scale half of this actually animates in practice: the
+       position half (left/top) is never transitioned, so this timing is felt
+       purely as the size easing in and out, not as position lag. */
+    transition: opacity 120ms ease-out, transform 150ms ease-out;
 }
 
 .magnet-lens.is-active {
