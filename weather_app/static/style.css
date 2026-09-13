@@ -82,6 +82,38 @@ body {
     99%           { opacity: 1; }
 }
 
+/* Small corner control, kept out of the main broadcast layout */
+.mute-toggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 50;
+    padding: 4px 10px;
+    border: 1px solid rgba(255, 214, 10, 0.55);
+    border-radius: 999px;
+    background: rgba(0, 18, 51, 0.55);
+    color: #ffd60a;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 1.4;
+    opacity: 0.6;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.mute-toggle:hover,
+.mute-toggle:focus-visible {
+    opacity: 1;
+}
+
+.mute-toggle[aria-pressed="true"] {
+    color: rgba(255, 255, 255, 0.65);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
 /* Standby screen: the click that powers the set on is also what unlocks audio */
 .tune-in {
     position: fixed;
@@ -317,7 +349,7 @@ body {
     padding: 12px 8px;
 }
 
-.forecast-day .date {
+.forecast-day .day-name {
     font-weight: 600;
     margin-bottom: 6px;
 }

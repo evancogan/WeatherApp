@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from flask import Flask, jsonify, request, send_from_directory
 
 from weather_api import get_weather
@@ -6,13 +8,45 @@ from weather_theme import icon_for, color_hex_for
 app = Flask(__name__, static_folder="static", static_url_path="")
 
 
-def _day_summary(day):
+def _local_today(weather_data):
+    """The calendar date where the weather is, not where this server runs."""
+    observed = weather_data.get("current_condition", [{}])[0].get("localObsDateTime", "")
+    try:
+        return datetime.strptime(observed, "%Y-%m-%d %I:%M %p").date()
+    except ValueError:
+        pass
+    # Fall back to the first forecast day, which wttr.in always reports as "today".
+    try:
+        return date.fromisoformat(weather_data["weather"][0]["date"])
+    except (KeyError, IndexError, ValueError):
+        return date.today()
+
+
+def _day_label(day_date, today):
+    """Human day name: Today, Tomorrow, then the weekday (Tuesday, Wednesday...)."""
+    offset = (day_date - today).days
+    if offset == 0:
+        return "Today"
+    if offset == 1:
+        return "Tomorrow"
+    return day_date.strftime("%A")
+
+
+def _day_summary(day, today):
     """Pick a representative condition from a wttr.in forecast day's hourly entries."""
     hourly = day.get("hourly", [])
     midday = hourly[len(hourly) // 2] if hourly else {}
     desc = midday.get("weatherDesc", [{"value": "Unknown"}])[0]["value"]
+
+    raw_date = day.get("date")
+    try:
+        label = _day_label(date.fromisoformat(raw_date), today)
+    except (TypeError, ValueError):
+        label = raw_date or "Unknown"
+
     return {
-        "date": day.get("date"),
+        "date": raw_date,
+        "day_label": label,
         "max_temp_c": float(day["maxtempC"]),
         "min_temp_c": float(day["mintempC"]),
         "condition": desc,
@@ -41,6 +75,7 @@ def api_weather():
     current = weather_data["current_condition"][0]
     condition = current["weatherDesc"][0]["value"]
     weather_code = current.get("weatherCode", 0)
+    today = _local_today(weather_data)
 
     return jsonify({
         "city": city_name,
@@ -48,7 +83,7 @@ def api_weather():
         "condition": condition,
         "icon": icon_for(weather_code),
         "color_hex": color_hex_for(weather_code),
-        "forecast": [_day_summary(day) for day in weather_data.get("weather", [])[:3]],
+        "forecast": [_day_summary(day, today) for day in weather_data.get("weather", [])[:3]],
     })
 
 

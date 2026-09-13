@@ -84,8 +84,8 @@ function render(payload) {
     panel.style.setProperty("--accent", payload.color_hex || "#ffffff");
     setIcon(currentIcon, payload.icon, "icon-large");
     currentTemp.textContent = `${value.toFixed(1)}${unit}`;
-    currentCity.textContent = `City: ${payload.city}`;
-    currentCondition.textContent = `Condition: ${payload.condition}`;
+    currentCity.textContent = payload.city;
+    currentCondition.textContent = payload.condition;
 
     forecastStrip.innerHTML = "";
     for (const day of payload.forecast) {
@@ -99,7 +99,7 @@ function render(payload) {
         setIcon(icon, day.icon, "icon-small");
 
         dayEl.innerHTML = `
-            <div class="date">${day.date}</div>
+            <div class="day-name" title="${day.date || ""}">${day.day_label || day.date}</div>
         `;
         dayEl.prepend(icon);
         dayEl.insertAdjacentHTML(
@@ -112,9 +112,9 @@ function render(payload) {
 }
 
 function renderError() {
-    currentCity.textContent = "City: Error";
+    currentCity.textContent = "Error";
     currentTemp.textContent = "--°";
-    currentCondition.textContent = "Condition: City not found or connection error";
+    currentCondition.textContent = "City not found or connection error";
     currentIcon.hidden = true;
     forecastStrip.innerHTML = "";
 }
@@ -149,7 +149,9 @@ toggleButton.addEventListener("click", () => {
 
 muteButton.addEventListener("click", () => {
     channelAudio.muted = !channelAudio.muted;
-    muteButton.textContent = channelAudio.muted ? "Unmute Music" : "Mute Music";
+    muteButton.textContent = channelAudio.muted ? "♪ Off" : "♪ On";
+    muteButton.setAttribute("aria-pressed", String(channelAudio.muted));
+    muteButton.title = channelAudio.muted ? "Unmute music" : "Mute music";
 });
 
 tuneInOverlay.addEventListener("click", powerOn, { once: true });

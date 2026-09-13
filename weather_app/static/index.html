@@ -17,6 +17,10 @@
 
     <div class="scanlines"></div>
 
+    <button type="button" class="mute-toggle" id="mute-button" aria-pressed="false" title="Mute music">
+        &#9834; On
+    </button>
+
     <header class="channel-header">
         <span class="channel-ident">WX-1</span>
         <span class="channel-tagline">Your Local Forecast</span>
@@ -27,14 +31,13 @@
             <input type="text" id="city-input" placeholder="City, State" autocomplete="off">
             <button type="submit" id="fetch-button">Fetch Weather</button>
             <button type="button" id="toggle-button">Switch to &deg;C</button>
-            <button type="button" id="mute-button">Mute Music</button>
         </form>
 
         <section class="current-conditions" id="current-conditions">
             <img id="current-icon" class="icon icon-large" src="" alt="" hidden>
             <div class="current-temp" id="current-temp">--&deg;</div>
-            <div class="current-city" id="current-city">City: N/A</div>
-            <div class="current-condition" id="current-condition">Condition: N/A</div>
+            <div class="current-city" id="current-city">N/A</div>
+            <div class="current-condition" id="current-condition">&nbsp;</div>
         </section>
 
         <section class="forecast-strip" id="forecast-strip"></section>
