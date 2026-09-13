@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from flask import Flask, jsonify, request, send_from_directory
 
+from moon import upcoming_phases
 from weather_api import get_weather
 from weather_theme import icon_for, color_hex_for
 
@@ -54,6 +55,45 @@ def _day_summary(day, today):
     }
 
 
+def _almanac(weather_data, today):
+    """Sunrise/sunset for today and tomorrow, plus moon phase data for the
+    Almanac screen. Every field here comes from data wttr.in already returned
+    for the forecast, except the four upcoming phase dates, which are not in
+    its response and are computed locally (see moon.py).
+    """
+    days = []
+    for day in weather_data.get("weather", [])[:2]:
+        try:
+            astronomy = day["astronomy"][0]
+            label = _day_label(date.fromisoformat(day["date"]), today)
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        days.append({
+            "day_label": label,
+            "sunrise": astronomy.get("sunrise", "--"),
+            "sunset": astronomy.get("sunset", "--"),
+        })
+
+    current_astronomy = weather_data.get("weather", [{}])[0].get("astronomy", [{}])[0]
+
+    return {
+        "days": days,
+        "moon_phase": current_astronomy.get("moon_phase", "Unknown"),
+        "moon_illumination": current_astronomy.get("moon_illumination", "0"),
+        "upcoming_phases": upcoming_phases(today),
+    }
+
+
+def _observations(current):
+    """Footer data-bar fields, straight off the current conditions block."""
+    return {
+        "visibility_miles": current.get("visibilityMiles", "--"),
+        "pressure_inches": current.get("pressureInches", "--"),
+        "wind_dir": current.get("winddir16Point", "--"),
+        "wind_mph": current.get("windspeedMiles", "--"),
+    }
+
+
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
@@ -84,6 +124,8 @@ def api_weather():
         "icon": icon_for(weather_code),
         "color_hex": color_hex_for(weather_code),
         "forecast": [_day_summary(day, today) for day in weather_data.get("weather", [])[:3]],
+        "almanac": _almanac(weather_data, today),
+        "observations": _observations(current),
     })
 
 

@@ -1,5 +1,20 @@
 :root {
+    /* Overwritten per weather condition by render() in app.js */
     --accent: #ffffff;
+
+    /* Sunset sky, read top to bottom off a 1990s broadcast weather backdrop */
+    --sky-top: #241a4d;
+    --sky-mid: #4a2a70;
+    --sky-warm: #8d4a72;
+    --sky-sun: #d4823f;
+    --sky-low: #f2ad63;
+
+    /* Headings and labels are yellow, data readouts stay white */
+    --chan-yellow: #f7e14a;
+    /* Opaque enough to hold its own blue. At lower alpha the orange half of the
+       sky bleeds through and turns the lower part of the panel brown. */
+    --chan-panel: rgba(70, 88, 150, 0.72);
+    --chan-band: rgba(36, 26, 77, 0.8);
 }
 
 * {
@@ -9,14 +24,84 @@
 body {
     margin: 0;
     min-height: 100vh;
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: 'VT323', 'Courier New', monospace;
     color: #ffffff;
-    background: linear-gradient(160deg, #001233 0%, #023e7d 45%, #0077b6 75%, #00b4d8 100%);
+    background: linear-gradient(
+        180deg,
+        var(--sky-top) 0%,
+        var(--sky-mid) 28%,
+        var(--sky-warm) 55%,
+        var(--sky-sun) 82%,
+        var(--sky-low) 100%
+    );
+    background-attachment: fixed;
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 24px 16px 48px;
     position: relative;
+}
+
+/* The broadcast image, as distinct from the fixed glass-and-signal overlays.
+   Wrapping it is what lets the sync-slip animation move the picture without
+   dragging .scanlines, .crt-tint and .reflection along with it. */
+.picture {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* The degauss ripple tracks the pointer across mostly-text content; without
+       this, a mouse-down that drifts a pixel or two reads as a text-selection
+       drag instead of a hover, leaving a distracting highlight on the picture. */
+    user-select: none;
+    animation: sync-slip 14s linear infinite;
+}
+
+/* The picture losing vertical lock for a few frames, the way a tube does when
+   the sync pulse is weak. Almost all of the cycle is the resting position. */
+@keyframes sync-slip {
+    0%, 96.6%, 100% { transform: translate3d(0, 0, 0); }
+    97%             { transform: translate3d(0, 5px, 0); }
+    97.6%           { transform: translate3d(0, -3px, 0); }
+    98.2%           { transform: translate3d(0, 2px, 0); }
+}
+
+/* Every piece of on-screen text that should look like it came down a composite
+   cable: bloomed, warm, and fringed red on one side and cyan on the other. Rows
+   built at render time in app.js are matched by class rather than id. On-screen
+   display controls (.osd-chip and friends) are deliberately left out of this
+   list -- see the comment on .osd-chip for why. */
+.crt-text,
+.broadcast-logo,
+.broadcast-title,
+.broadcast-time,
+.broadcast-date,
+.current-temp,
+.current-city,
+.current-condition,
+.forecast-day .day-name,
+.forecast-day .temps,
+.almanac-cell--day,
+.almanac-cell--label,
+.almanac-cell--value,
+.almanac-empty,
+.almanac-moon-title,
+.moon-name,
+.moon-date,
+.footer-item,
+.tune-in-ident,
+.tune-in-prompt,
+.tune-in-hint {
+    /* Kept under 1px: this blur also softens the text-shadow layers below it,
+       so the two compound and a larger value turns small text to mush. */
+    filter: blur(0.7px);
+    text-shadow:
+        0 0 2px currentColor,
+        0 0 10px rgba(255, 245, 210, 0.5),
+        0 0 22px rgba(255, 150, 60, 0.35),
+        2px 2px 0 rgba(20, 5, 40, 0.6),
+        -1.5px 0 0 rgba(255, 40, 90, 0.4),
+        1.5px 0 0 rgba(0, 210, 255, 0.4);
 }
 
 /* Retro CRT scanline overlay */
@@ -29,18 +114,30 @@ body {
     animation: crt-flicker 3s steps(1, end) infinite;
 }
 
-/* Fine raster lines, crawling slowly downward */
+/* Fine raster lines crawling slowly downward, over a fixed aperture grille.
+   The grille's stripes run vertically, which makes them invariant under the
+   vertical crawl, so both layers can share one animated element. */
 .scanlines::before {
     content: "";
     position: absolute;
     inset: -100% 0;
-    background: repeating-linear-gradient(
-        to bottom,
-        rgba(255, 255, 255, 0.05) 0px,
-        rgba(255, 255, 255, 0.05) 1px,
-        transparent 2px,
-        transparent 4px
-    );
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.11) 0px,
+            rgba(0, 0, 0, 0.11) 1px,
+            transparent 2px,
+            transparent 4px
+        ),
+        repeating-linear-gradient(
+            to right,
+            rgba(255, 60, 60, 0.07) 0px,
+            rgba(255, 60, 60, 0.07) 1px,
+            rgba(60, 255, 60, 0.07) 1px,
+            rgba(60, 255, 60, 0.07) 2px,
+            rgba(60, 60, 255, 0.07) 2px,
+            rgba(60, 60, 255, 0.07) 3px
+        );
     will-change: transform;
     animation: scanline-crawl 1.2s linear infinite;
 }
@@ -56,9 +153,9 @@ body {
     background: linear-gradient(
         to bottom,
         transparent 0%,
-        rgba(255, 255, 255, 0.03) 35%,
-        rgba(255, 255, 255, 0.08) 50%,
-        rgba(255, 255, 255, 0.03) 65%,
+        rgba(255, 226, 180, 0.05) 35%,
+        rgba(255, 226, 180, 0.14) 50%,
+        rgba(255, 226, 180, 0.05) 65%,
         transparent 100%
     );
     will-change: transform;
@@ -76,10 +173,55 @@ body {
     to   { transform: translate3d(0, 100vh, 0); }
 }
 
+/* Two dips of different depths at uneven spacing, so the brightness never
+   settles into a rhythm the eye can predict. */
 @keyframes crt-flicker {
-    0%, 97%, 100% { opacity: 1; }
-    98%           { opacity: 0.82; }
-    99%           { opacity: 1; }
+    0%, 41%, 100% { opacity: 1; }
+    42%           { opacity: 0.88; }
+    43%, 97%      { opacity: 1; }
+    98%           { opacity: 0.7; }
+    98.6%         { opacity: 0.93; }
+    99.2%         { opacity: 1; }
+}
+
+/* The tube glass: a warm cast over the whole picture, then the darkening and
+   rounded corners of a curved screen. Split across two pseudo-elements because
+   each half needs its own blend mode. */
+.crt-tint {
+    position: fixed;
+    inset: 0;
+    z-index: 9997;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Amber running hot toward the bottom of the screen, on top of the sky
+   gradient's own orange. Soft-light warms the picture without washing it out. */
+.crt-tint::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: soft-light;
+    opacity: 0.55;
+    background: radial-gradient(
+        ellipse 120% 90% at 50% 105%,
+        rgba(255, 154, 58, 0.95) 0%,
+        rgba(255, 120, 40, 0.55) 40%,
+        rgba(120, 60, 160, 0.15) 75%,
+        transparent 100%
+    );
+}
+
+/* The rounded corners of the tube: plain, flat, pure black -- no gradient, no
+   alpha, nothing to blend. A box-shadow spread paints solid #000 everywhere
+   outside this element's own rounded-rect shape, so the four corner notches
+   carved out by border-radius are just black, full stop. */
+.crt-tint::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    box-shadow: 0 0 0 100vmax #000000;
 }
 
 /* The room bouncing off the curved glass. Screen blending means only light from
@@ -127,50 +269,163 @@ body {
             brightness(var(--reflection-strength, 2.6));
 }
 
-/* Small corner controls, kept out of the main broadcast layout */
+/* Filter definitions render nothing themselves; collapse the SVG to nothing so
+   it never reserves layout space or shows a stray default-sized box. */
+.magnet-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* .magnet-lens is the live head of the interference effect: it sits exactly
+   at the pointer with no lag, updated directly by app.js on every qualifying
+   pointermove. .magnet-trail is a pooled set of copies dropped behind it as
+   the pointer moves, each fading out on its own -- that combination is what
+   reads as a smear/trail rather than either a fixed spot or a delayed blob.
+   Both sit above every CRT overlay layer so they visibly warp the full
+   picture (sky, scanlines, tint, on-screen text) but below the OSD bezel and
+   standby screen, which are painted afterward and so never enter what the
+   filter samples.
+
+   Sized as a broad-ish area rather than a tight spot, so it reads as
+   interference passing across the picture, not a magnifying glass. A hard
+   circular edge would look like a cutout at this size, so mask-image feathers
+   the distortion out toward the edge instead of stopping abruptly. */
+.magnet-lens,
+.magnet-trail {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    width: 20vmin;
+    height: 20vmin;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+    backdrop-filter: url(#magnet-ripple);
+}
+
+.magnet-lens {
+    transition: opacity 120ms ease-out;
+}
+
+.magnet-lens.is-active {
+    opacity: 1;
+}
+
+/* Each trail copy is dropped already at full opacity, then eased down to
+   nothing over one run of this animation -- .is-fading is added and removed
+   by app.js so a reused pool element can restart the same animation cleanly. */
+.magnet-trail.is-fading {
+    animation: magnet-trail-fade 1500ms ease-out forwards;
+}
+
+@keyframes magnet-trail-fade {
+    from { opacity: 0.5; }
+    to   { opacity: 0; }
+}
+
+/* Small on-screen-display controls, kept out of the main broadcast layout.
+   Raised above every CRT overlay (.crt-tint 9997, .reflection 9998, .scanlines
+   9999) so the viewer can always tell what they are and where they are --
+   before this they sat at z-index 50 and were painted over into illegibility. */
 .channel-controls {
     position: fixed;
     top: 12px;
     right: 12px;
-    z-index: 50;
+    z-index: 10000;
+}
+
+/* A hard black VCR-style panel the keys are set into. Flat and square-edged on
+   purpose, for contrast against the rounded, glassy broadcast picture behind
+   it -- this is the one thing on screen that reads as a physical box, not a
+   picture. Never fuzzed, same as the keys it holds. */
+.osd-bezel {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    padding: 5px;
+    background: #0a0a0a;
+    border-top: 2px solid #3a3a3a;
+    border-left: 2px solid #3a3a3a;
+    border-bottom: 2px solid #000000;
+    border-right: 2px solid #000000;
+    border-radius: 2px;
 }
 
-.chip {
-    padding: 4px 10px;
-    border: 1px solid rgba(255, 214, 10, 0.55);
-    border-radius: 999px;
-    background: rgba(0, 18, 51, 0.55);
-    color: #ffd60a;
-    font-family: inherit;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    line-height: 1.4;
-    opacity: 0.6;
+/* Modeled on a real set's own on-screen display: a hard-edged, chunky plastic
+   key built from a stepped light/dark bevel rather than a gradient, matching
+   the bitmap look used everywhere else. It carries none of the .crt-text
+   fuzz, blur, or bloom -- an OSD key is always the one legible thing on a
+   fuzzy picture, generated by the set itself rather than piped through the
+   tuner. */
+.osd-chip {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-top: 2px solid rgba(255, 255, 255, 0.55);
+    border-left: 2px solid rgba(255, 255, 255, 0.55);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.55);
+    border-right: 2px solid rgba(0, 0, 0, 0.55);
+    border-radius: 0;
+    background: #2fcf49;
+    color: #0a0a0a;
     cursor: pointer;
-    transition: opacity 0.15s ease;
+    filter: none;
 }
 
-.chip:hover,
-.chip:focus-visible {
-    opacity: 1;
+/* Pressing a physical key inverts its bevel: the light edge moves to the
+   bottom-right and the key visually sinks in. */
+.osd-chip:active {
+    border-top-color: rgba(0, 0, 0, 0.55);
+    border-left-color: rgba(0, 0, 0, 0.55);
+    border-bottom-color: rgba(255, 255, 255, 0.55);
+    border-right-color: rgba(255, 255, 255, 0.55);
+}
+
+.osd-chip:focus-visible {
+    outline: 2px dashed rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+}
+
+.osd-icon {
+    width: 18px;
+    height: 18px;
 }
 
 /* Shared "switched off" look. Keyed to a class rather than aria-pressed so each
    chip can report its own honest pressed state. */
-.chip.is-off {
-    color: rgba(255, 255, 255, 0.65);
-    border-color: rgba(255, 255, 255, 0.3);
+.osd-chip.is-off {
+    background: #4a5259;
+    color: #d8dde2;
 }
 
-/* Standby screen: the click that powers the set on is also what unlocks audio */
+/* The mute icon swaps between a speaker with sound arcs and a speaker with a
+   cross through it, keyed off the same .is-off class the box color uses. */
+#mute-button .osd-icon-mute {
+    display: none;
+}
+
+#mute-button.is-off .osd-icon-sound {
+    display: none;
+}
+
+#mute-button.is-off .osd-icon-mute {
+    display: block;
+}
+
+/* Standby screen: the click that powers the set on is also what unlocks audio.
+   Sits above the OSD controls so powering off the "set" hides them too. */
 .tune-in {
     position: fixed;
     inset: 0;
-    z-index: 10000;
+    z-index: 10001;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -178,7 +433,7 @@ body {
     gap: 16px;
     border: none;
     background: #000000;
-    color: #ffd60a;
+    color: var(--chan-yellow);
     font-family: inherit;
     cursor: pointer;
     transform-origin: center;
@@ -188,20 +443,18 @@ body {
     font-family: 'Archivo Black', Arial, sans-serif;
     font-size: 3rem;
     letter-spacing: 4px;
-    text-shadow: 0 0 12px rgba(255, 214, 10, 0.5);
 }
 
 .tune-in-prompt {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: 2.1rem;
     text-transform: uppercase;
     letter-spacing: 4px;
-    color: #00b4d8;
+    color: #ff9a3a;
     animation: tune-in-blink 1.4s steps(1, end) infinite;
 }
 
 .tune-in-hint {
-    font-size: 0.85rem;
+    font-size: 1.2rem;
     text-transform: uppercase;
     letter-spacing: 3px;
     color: #ffffff;
@@ -257,6 +510,12 @@ body {
         animation: none;
     }
 
+    /* The picture holds vertical lock. The warm tint, vignette and text fuzz
+       all stay, since none of them move. */
+    .picture {
+        animation: none;
+    }
+
     .scanlines::after {
         display: none;
     }
@@ -265,17 +524,22 @@ body {
         animation: none;
     }
 
+    /* Screens still change on a manual arrow-key step, just without the fade. */
+    .screen:not([hidden]) {
+        animation: none;
+    }
+
     /* The reflection overlay shows a live camera feed, which is continuous
        motion, so it is hidden by default here. app.js also skips the camera
        request at power-on under this media query, which means no permission
-       prompt either. Pressing the "Refl" button (#reflection-button) removes
-       this rule's effect by starting the stream on purpose. */
+       prompt either. Pressing the reflection OSD button removes this rule's
+       effect by starting the stream on purpose. */
     .reflection {
         display: none;
     }
 
-    /* Pressing "Refl" is an explicit request for the effect, so honour it even
-       when reduced motion is set. */
+    /* Pressing the reflection OSD button is an explicit request for the
+       effect, so honour it even when reduced motion is set. */
     .reflection.live {
         display: block;
     }
@@ -288,76 +552,123 @@ body {
     }
 }
 
-.channel-header {
+/* ---- Broadcast frame: header, screen stage, footer ---- */
+
+.broadcast-header {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
     display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 24px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(36, 26, 77, 0.85), rgba(74, 42, 112, 0.7));
+    border-radius: 10px 10px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+}
+
+/* A decorative diagonal sunbeam, standing in for the angled cut on the
+   reference broadcast's title card. Purely cosmetic, so it sits behind the
+   header's real content rather than clipping the band (and the text in it). */
+.broadcast-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 55%, rgba(212, 130, 63, 0.55) 60%, transparent 68%);
+    pointer-events: none;
+}
+
+.broadcast-logo {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    font-family: 'Archivo Black', Arial, sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 1px;
+    color: var(--chan-yellow);
+    background: rgba(20, 10, 45, 0.55);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    padding: 6px 14px;
+}
+
+.broadcast-title {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    font-size: 1.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--chan-yellow);
     text-align: center;
+}
+
+.broadcast-clock {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    text-align: right;
+    line-height: 1.25;
+}
+
+.broadcast-time {
+    font-size: 1.5rem;
+    color: #ffffff;
+}
+
+.broadcast-date {
+    font-size: 1.1rem;
+    color: #ffffff;
+    opacity: 0.85;
+    letter-spacing: 1px;
+}
+
+.screen-stage {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+    min-height: 420px;
+    background: var(--chan-panel);
+    border-left: 1px solid rgba(255, 255, 255, 0.18);
+    border-right: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 28px 24px;
+    backdrop-filter: blur(6px);
+    box-shadow:
+        0 0 26px rgba(20, 5, 40, 0.45),
+        0 0 34px -6px var(--accent);
+}
+
+.screen {
+    width: 100%;
+    animation: screen-fade-in 400ms ease;
+}
+
+@keyframes screen-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.broadcast-footer {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 8px 32px;
+    padding: 10px 20px;
+    background: var(--chan-band);
+    border-radius: 0 0 10px 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.channel-ident {
-    font-family: 'Archivo Black', Arial, sans-serif;
-    font-size: 2.5rem;
-    letter-spacing: 2px;
-    color: #ffd60a;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+.footer-item {
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+    white-space: nowrap;
 }
 
-.channel-tagline {
-    font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    opacity: 0.8;
-}
-
-.broadcast-panel {
-    width: 100%;
-    max-width: 640px;
-    background: rgba(0, 18, 51, 0.45);
-    border: 2px solid var(--accent);
-    border-radius: 16px;
-    padding: 24px;
-    backdrop-filter: blur(4px);
-    box-shadow: 0 0 24px rgba(0, 0, 0, 0.35);
-}
-
-.controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.controls input,
-.controls button {
-    flex: 1 1 160px;
-    min-height: 44px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: none;
-    font-size: 1rem;
-    font-family: inherit;
-}
-
-.controls input {
-    background: rgba(255, 255, 255, 0.9);
-    color: #001233;
-}
-
-.controls button {
-    background: #ffd60a;
-    color: #001233;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.1s ease;
-}
-
-.controls button:hover {
-    transform: translateY(-1px);
-}
+/* ---- Screen: Current Conditions ---- */
 
 .current-conditions {
     text-align: center;
@@ -366,9 +677,16 @@ body {
     margin-bottom: 20px;
 }
 
+/* The icon artwork was vector-crisp, which read as pasted on over fuzzed type.
+   Softening and warming it puts the graphics into the same signal as the text. */
 .icon {
     display: block;
     margin: 0 auto 8px;
+    filter:
+        blur(0.5px)
+        saturate(1.25)
+        contrast(1.1)
+        drop-shadow(0 0 8px rgba(255, 180, 90, 0.45));
 }
 
 .icon-large {
@@ -381,23 +699,82 @@ body {
     height: 48px;
 }
 
+/* The temperature and city are buttons standing in for the old fetch form: no
+   button chrome, just the readout itself made clickable. Each keeps its own
+   .crt-text-listed fuzz; only the reset and the affordance live here. */
+.current-temp,
+.current-city {
+    display: inline-block;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.current-temp:hover,
+.current-city:hover {
+    opacity: 0.85;
+}
+
+.current-temp:focus-visible,
+.current-city:focus-visible {
+    outline: 2px dashed rgba(255, 255, 255, 0.6);
+    outline-offset: 4px;
+}
+
+/* The largest text on screen, so it can carry more blur and wider colour
+   fringing than the body copy before it stops being readable. */
 .current-temp {
-    font-family: 'Archivo Black', Arial, sans-serif;
-    font-size: 4rem;
+    font-size: 5.5rem;
     color: var(--accent);
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
     line-height: 1;
+    letter-spacing: 2px;
+    filter: blur(1.2px);
+    text-shadow:
+        0 0 4px currentColor,
+        0 0 16px rgba(255, 245, 210, 0.55),
+        0 0 34px rgba(255, 150, 60, 0.4),
+        3px 3px 0 rgba(20, 5, 40, 0.6),
+        -2.5px 0 0 rgba(255, 40, 90, 0.45),
+        2.5px 0 0 rgba(0, 210, 255, 0.45);
+}
+
+.city-line {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
 }
 
 .current-city {
-    font-size: 1.25rem;
-    margin-top: 8px;
-    font-weight: 600;
+    font-size: 1.9rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Swaps in for .current-city while searching. Deliberately left out of the
+   .crt-text list and kept in a plain sans: typing into blurred bitmap type is
+   needlessly hard to proofread, the same reasoning the old search field had. */
+.city-search-input {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1.3rem;
+    text-align: center;
+    min-width: 220px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: none;
+    background: rgba(238, 236, 224, 0.95);
+    color: #241a4d;
 }
 
 .current-condition {
-    font-size: 1rem;
-    opacity: 0.85;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--chan-yellow);
+    opacity: 0.9;
     margin-top: 4px;
 }
 
@@ -411,19 +788,114 @@ body {
 .forecast-day {
     flex: 1 1 140px;
     text-align: center;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
+    background: rgba(132, 150, 208, 0.3);
+    border-radius: 4px;
     padding: 12px 8px;
 }
 
 .forecast-day .day-name {
-    font-weight: 600;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--chan-yellow);
     margin-bottom: 6px;
 }
 
+/* The smallest text on screen and the first thing the heavy blur costs, so it
+   is sized up well past its old 0.9rem to stay readable through the fuzz. */
 .forecast-day .temps {
-    font-size: 0.9rem;
-    opacity: 0.85;
+    font-size: 1.35rem;
+    letter-spacing: 1px;
+}
+
+/* ---- Screen: Almanac ---- */
+
+.almanac-sun {
+    margin-bottom: 24px;
+}
+
+.almanac-empty {
+    text-align: center;
+    font-size: 1.3rem;
+    opacity: 0.75;
+}
+
+.almanac-grid {
+    display: grid;
+    grid-template-columns: minmax(90px, auto) repeat(var(--almanac-cols, 2), 1fr);
+    row-gap: 10px;
+    column-gap: 16px;
+    align-items: center;
+}
+
+.almanac-cell {
+    font-size: 1.5rem;
+}
+
+.almanac-cell--day {
+    text-align: center;
+    color: var(--chan-yellow);
+}
+
+.almanac-cell--value {
+    text-align: center;
+}
+
+.almanac-moon {
+    background: rgba(90, 90, 110, 0.35);
+    border-radius: 6px;
+    padding: 16px;
+}
+
+.almanac-moon-title {
+    font-size: 1.5rem;
+    color: var(--chan-yellow);
+    margin-bottom: 14px;
+}
+
+.almanac-moon-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.moon-col {
+    flex: 1 1 100px;
+    text-align: center;
+}
+
+.moon-name {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+}
+
+/* Drawn rather than imported as artwork: a plain circle with a hard-stop
+   gradient gives right-lit, left-lit, full and new discs at no asset cost. */
+.moon-disc {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    background: #14101f;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.moon-disc--full {
+    background: #f1ecd9;
+}
+
+.moon-disc--first {
+    background: linear-gradient(to right, #14101f 50%, #f1ecd9 50%);
+}
+
+.moon-disc--last {
+    background: linear-gradient(to right, #f1ecd9 50%, #14101f 50%);
+}
+
+.moon-date {
+    font-size: 1.2rem;
+    opacity: 0.9;
 }
 
 @media (max-width: 480px) {
@@ -431,11 +903,31 @@ body {
         flex-direction: column;
     }
 
-    .channel-ident {
-        font-size: 2rem;
+    .broadcast-header {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .broadcast-title {
+        order: 3;
+        flex-basis: 100%;
+        font-size: 1.4rem;
+    }
+
+    .broadcast-clock {
+        text-align: center;
     }
 
     .current-temp {
-        font-size: 3rem;
+        font-size: 4rem;
+    }
+
+    .current-city {
+        font-size: 1.6rem;
+    }
+
+    .almanac-moon-row {
+        justify-content: center;
     }
 }

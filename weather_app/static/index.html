@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Weather Channel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,38 +19,107 @@
         <video id="reflection-video" playsinline muted></video>
     </div>
 
+    <div class="crt-tint" aria-hidden="true"></div>
+
     <div class="scanlines"></div>
 
+    <!-- Filter definitions only -- renders nothing on its own. .magnet-lens
+         below references #magnet-ripple to warp the picture right under the
+         pointer, like a degaussing magnet passed near the tube. -->
+    <svg class="magnet-defs" aria-hidden="true">
+        <filter id="magnet-ripple" x="-50%" y="-50%" width="200%" height="200%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="7" result="noise"></feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+        </filter>
+    </svg>
+    <div class="magnet-lens" id="magnet-lens" aria-hidden="true"></div>
+
+    <!-- On-screen display controls. These sit above every CRT overlay (see the
+         z-index notes in style.css) and are deliberately never fuzzed, the way
+         a real set's own OSD is always crisper than the broadcast picture. -->
     <div class="channel-controls">
-        <button type="button" class="chip" id="reflection-button" aria-pressed="false" title="Turn off screen reflection">
-            &#9673; Refl
-        </button>
-        <button type="button" class="chip" id="mute-button" aria-pressed="false" title="Mute music">
-            &#9834; On
-        </button>
+        <div class="osd-bezel">
+            <button type="button" class="osd-chip" id="reflection-button" aria-pressed="false" title="Turn off screen reflection">
+                <!-- Blocky ring-and-pupil "lens" glyph, an 8x8 pixel grid -->
+                <svg class="osd-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+                    <rect x="3" y="1" width="2" height="1" fill="currentColor"></rect>
+                    <rect x="1" y="3" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="6" y="3" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="3" y="6" width="2" height="1" fill="currentColor"></rect>
+                    <rect x="2" y="2" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="5" y="2" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="2" y="5" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="5" y="5" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="3" y="3" width="2" height="2" fill="currentColor"></rect>
+                </svg>
+            </button>
+            <button type="button" class="osd-chip" id="mute-button" aria-pressed="false" title="Mute music">
+                <!-- Blocky speaker glyph, an 8x8 pixel grid. The sound-wave
+                     steps and the X swap the same way the old paths did. -->
+                <svg class="osd-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+                    <rect x="0" y="3" width="2" height="2" fill="currentColor"></rect>
+                    <rect x="2" y="2" width="1" height="4" fill="currentColor"></rect>
+                    <rect x="3" y="1" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="3" y="6" width="1" height="1" fill="currentColor"></rect>
+                    <rect x="4" y="0" width="1" height="8" fill="currentColor"></rect>
+                    <g class="osd-icon-sound">
+                        <rect x="6" y="3" width="1" height="2" fill="currentColor"></rect>
+                        <rect x="7" y="2" width="1" height="1" fill="currentColor"></rect>
+                        <rect x="7" y="5" width="1" height="1" fill="currentColor"></rect>
+                    </g>
+                    <g class="osd-icon-mute">
+                        <rect x="5" y="2" width="1" height="1" fill="currentColor"></rect>
+                        <rect x="7" y="2" width="1" height="1" fill="currentColor"></rect>
+                        <rect x="6" y="3" width="1" height="1" fill="currentColor"></rect>
+                        <rect x="5" y="4" width="1" height="1" fill="currentColor"></rect>
+                        <rect x="7" y="4" width="1" height="1" fill="currentColor"></rect>
+                    </g>
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <header class="channel-header">
-        <span class="channel-ident">WX-1</span>
-        <span class="channel-tagline">Your Local Forecast</span>
-    </header>
+    <!-- Everything inside .picture is the broadcast image itself, so it can be
+         nudged by the sync-slip animation without disturbing the fixed overlays. -->
+    <div class="picture">
+        <header class="broadcast-header">
+            <div class="broadcast-logo">WX-1</div>
+            <div class="broadcast-title" id="screen-title">Current Conditions</div>
+            <div class="broadcast-clock">
+                <div class="broadcast-time" id="broadcast-time">--:--:-- --</div>
+                <div class="broadcast-date" id="broadcast-date">--- --- --</div>
+            </div>
+        </header>
 
-    <main class="broadcast-panel" id="broadcast-panel">
-        <form id="city-form" class="controls">
-            <input type="text" id="city-input" placeholder="City, State" autocomplete="off">
-            <button type="submit" id="fetch-button">Fetch Weather</button>
-            <button type="button" id="toggle-button">Switch to &deg;C</button>
-        </form>
+        <main class="screen-stage" id="screen-stage">
+            <section class="screen" id="screen-current">
+                <div class="current-conditions" id="current-conditions">
+                    <img id="current-icon" class="icon icon-large" src="" alt="" hidden>
 
-        <section class="current-conditions" id="current-conditions">
-            <img id="current-icon" class="icon icon-large" src="" alt="" hidden>
-            <div class="current-temp" id="current-temp">--&deg;</div>
-            <div class="current-city" id="current-city">N/A</div>
-            <div class="current-condition" id="current-condition">&nbsp;</div>
-        </section>
+                    <button type="button" class="current-temp" id="current-temp" title="Click to switch &deg;F / &deg;C">--&deg;</button>
 
-        <section class="forecast-strip" id="forecast-strip"></section>
-    </main>
+                    <div class="city-line">
+                        <button type="button" class="current-city" id="current-city" title="Click to search a new city">N/A</button>
+                        <input type="text" class="city-search-input" id="city-search-input" placeholder="City, State" autocomplete="off" hidden>
+                    </div>
+
+                    <div class="current-condition" id="current-condition">&nbsp;</div>
+                </div>
+
+                <section class="forecast-strip" id="forecast-strip"></section>
+            </section>
+
+            <section class="screen" id="screen-almanac" hidden>
+                <div class="almanac-sun" id="almanac-sun"></div>
+                <div class="almanac-moon">
+                    <div class="almanac-moon-title">Moon Data:</div>
+                    <div class="almanac-moon-row" id="almanac-moon-row"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="broadcast-footer" id="broadcast-footer"></footer>
+    </div>
 
     <!-- Drop your own track at static/music/theme.mp3 -- see music/README.md -->
     <audio id="channel-audio" src="music/theme.mp3" loop preload="auto"></audio>
