@@ -4,6 +4,16 @@ const FADE_DURATION_MS = 1500;
 const POWER_ON_FALLBACK_MS = 800;
 const PREFS_KEY = "wx1.prefs";
 const SCREEN_DURATION_MS = 10000;
+// Per character, and per card before the next one starts printing. Both are
+// deliberately quick: all twelve readings finish inside the first couple of
+// seconds of a ten-second screen, so the effect is the arrival of the text
+// rather than something the viewer has to sit through.
+const HOROSCOPE_TYPE_MS = 9;
+const HOROSCOPE_CARD_STAGGER_MS = 80;
+// The horoscope screen overrides SCREEN_DURATION_MS: twelve readings is far
+// more text than any other screen carries, and the typing eats the first
+// seconds of it, so the standard interval left no time to actually read.
+const HOROSCOPE_DURATION_MS = 24000;
 const MAGNET_MAX_SCALE = 46;
 const MAGNET_RAMP_MS = 120;
 const MAGNET_IDLE_MS = 120;
@@ -13,10 +23,10 @@ const MAGNET_IDLE_MS = 120;
 const MAGNET_TRAIL_COUNT = 24;
 const MAGNET_TRAIL_MIN_DIST = 26;
 // How small the lens renders at rest/slow movement (a fraction of its full
-// 20vmin footprint) and the speed, in pixels per millisecond, at which it
+// 14vmin footprint) and the speed, in pixels per millisecond, at which it
 // reaches full size. Below MAGNET_SPEED_FOR_FULL_SIZE it scales linearly
 // between the two.
-const MAGNET_MIN_SIZE_SCALE = 0.18;
+const MAGNET_MIN_SIZE_SCALE = 0.03;
 const MAGNET_SPEED_FOR_FULL_SIZE = 1.6;
 
 const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -31,6 +41,7 @@ let isEditingCity = false;
 let rotationPaused = false;
 let rotationTimeout = null;
 let activeScreenIndex = 0;
+let lastSeenDay = null;
 
 const muteButton = document.getElementById("mute-button");
 const reflectionButton = document.getElementById("reflection-button");
@@ -54,6 +65,13 @@ const forecastStrip = document.getElementById("forecast-strip");
 
 const almanacSun = document.getElementById("almanac-sun");
 const almanacMoonRow = document.getElementById("almanac-moon-row");
+
+const mapFrame = document.getElementById("map-frame");
+const mapMarkers = document.getElementById("map-markers");
+
+const regionalTable = document.getElementById("regional-table");
+
+const horoscopeGrid = document.getElementById("horoscope-grid");
 
 /* All user preferences live under one localStorage key as a single JSON object.
    Both accessors swallow errors because localStorage throws outright in some
@@ -356,6 +374,206 @@ function renderAlmanacMoon(phases) {
     }
 }
 
+/* ---- Screen: Regional Forecast ----
+   The same roster the observations table prints, plotted instead of listed. The
+   server already projected each city to a percentage of the frame (see
+   regional.py), so there is no map library and no geography in this file --
+   just absolute positioning over a basemap that never moves.
+
+   The basemap is injected rather than used as an <img> because inline SVG is
+   the only form whose land, water and borders the stylesheet can still reach,
+   which is what lets the map tint with the rest of the picture. */
+
+let basemapRequest = null;
+
+function ensureBasemap() {
+    // Fetched once and cached by the promise itself, so the twenty renders a
+    // long session triggers cost exactly one request.
+    if (!basemapRequest) {
+        basemapRequest = fetch("basemap.svg")
+            .then((response) => (response.ok ? response.text() : ""))
+            .then((markup) => {
+                if (markup) {
+                    mapFrame.insertAdjacentHTML("afterbegin", markup);
+                }
+            })
+            .catch(() => {
+                // A missing basemap leaves the markers on a bare panel, which
+                // still reads as a map of temperatures. Nothing to recover.
+            });
+    }
+    return basemapRequest;
+}
+
+function renderMap(payload) {
+    ensureBasemap();
+
+    const rows = (payload.regional || []).filter(
+        (row) => typeof row.map_x === "number" && typeof row.map_y === "number"
+    );
+    mapMarkers.innerHTML = "";
+
+    if (rows.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "regional-empty";
+        empty.textContent = "Observations unavailable";
+        mapMarkers.appendChild(empty);
+        return;
+    }
+
+    for (const row of rows) {
+        const marker = document.createElement("div");
+        marker.className = "map-marker";
+        marker.style.left = `${row.map_x}%`;
+        marker.style.top = `${row.map_y}%`;
+
+        const name = document.createElement("div");
+        name.className = "map-marker-city";
+        name.textContent = row.city;
+
+        // Temperature and icon share a row under the name, the way the
+        // broadcast maps set them, so the pair reads as one label.
+        const reading = document.createElement("div");
+        reading.className = "map-marker-reading";
+
+        const temp = document.createElement("span");
+        temp.className = "map-marker-temp";
+        temp.textContent = celsiusToDisplay(row.temp_c).value.toFixed(0);
+
+        const icon = document.createElement("img");
+        setIcon(icon, row.icon, "icon-pin");
+        icon.alt = "";
+
+        reading.append(temp, icon);
+        marker.append(name, reading);
+        mapMarkers.appendChild(marker);
+    }
+}
+
+/* ---- Screen: Latest Observations ----
+   One grid rather than a table element, so the columns of every row line up on
+   the same track sizes: city, temperature, condition, then the wind's direction
+   and speed as separate cells so the speed can sit right-aligned under its own
+   heading the way the broadcast tables did. */
+
+function renderRegional(payload) {
+    const rows = payload.regional || [];
+    regionalTable.innerHTML = "";
+
+    if (rows.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "regional-empty";
+        empty.textContent = "Observations unavailable";
+        regionalTable.appendChild(empty);
+        return;
+    }
+
+    const addCell = (text, className) => {
+        const cell = document.createElement("div");
+        cell.className = className;
+        cell.textContent = text;
+        regionalTable.appendChild(cell);
+    };
+
+    // The temperature heading follows the °F/°C toggle, since the readings in
+    // the column below it do.
+    addCell("CITY", "regional-cell regional-cell--head");
+    addCell(currentUnit === "F" ? "°F" : "°C", "regional-cell regional-cell--head regional-cell--temp");
+    addCell("WEATHER", "regional-cell regional-cell--head");
+    addCell("WIND", "regional-cell regional-cell--head regional-cell--wind-head");
+
+    for (const row of rows) {
+        const temp = celsiusToDisplay(row.temp_c);
+        addCell(row.city, "regional-cell regional-cell--city");
+        addCell(temp.value.toFixed(0), "regional-cell regional-cell--temp");
+        addCell(row.condition, "regional-cell");
+        addCell(row.wind_dir, "regional-cell regional-cell--wind-dir");
+        addCell(row.wind_mph, "regional-cell regional-cell--wind-speed");
+    }
+}
+
+/* ---- Screen: Horoscope ----
+   The cards are built once per payload but left blank, because the readings are
+   typed in by typeHoroscope() every time the screen comes around rather than
+   appearing all at once. */
+
+// One pending timer per card, so a restart can cancel whatever was still
+// printing without tracking a timer per character.
+let horoscopeTypers = [];
+
+function stopHoroscopeTyping() {
+    horoscopeTypers.forEach(clearTimeout);
+    horoscopeTypers = [];
+}
+
+function renderHoroscope(payload) {
+    stopHoroscopeTyping();
+    horoscopeGrid.innerHTML = "";
+
+    for (const sign of payload.horoscope || []) {
+        const card = document.createElement("div");
+        card.className = "horoscope-card";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "horoscope-sign";
+        nameEl.textContent = sign.name;
+        card.appendChild(nameEl);
+
+        const datesEl = document.createElement("div");
+        datesEl.className = "horoscope-dates";
+        datesEl.textContent = sign.dates;
+        card.appendChild(datesEl);
+
+        // The reading itself is carried on the element so a retype does not
+        // need the payload again.
+        const readingEl = document.createElement("div");
+        readingEl.className = "horoscope-reading";
+        readingEl.dataset.reading = sign.reading;
+        card.appendChild(readingEl);
+
+        horoscopeGrid.appendChild(card);
+    }
+
+    // A payload that lands while the screen is already up still has to fill
+    // itself in; every other case is handled by the screen's onShow.
+    if (!horoscopeScreen.hidden) {
+        typeHoroscope();
+    }
+}
+
+function typeCard(readingEl, index) {
+    const text = readingEl.dataset.reading || "";
+    readingEl.textContent = "";
+    readingEl.classList.add("is-typing");
+
+    let typed = 0;
+    const step = () => {
+        typed += 1;
+        readingEl.textContent = text.slice(0, typed);
+        if (typed < text.length) {
+            horoscopeTypers[index] = setTimeout(step, HOROSCOPE_TYPE_MS);
+            return;
+        }
+        readingEl.classList.remove("is-typing");
+    };
+    horoscopeTypers[index] = setTimeout(step, index * HOROSCOPE_CARD_STAGGER_MS);
+}
+
+function typeHoroscope() {
+    stopHoroscopeTyping();
+    const readings = horoscopeGrid.querySelectorAll(".horoscope-reading");
+    readings.forEach((readingEl, index) => {
+        // Text that assembles itself is motion like any other, so reduced
+        // motion gets the finished readings with no animation at all.
+        if (prefersReducedMotion()) {
+            readingEl.classList.remove("is-typing");
+            readingEl.textContent = readingEl.dataset.reading || "";
+            return;
+        }
+        typeCard(readingEl, index);
+    });
+}
+
 /* ---- Footer data bar ---- */
 
 function renderFooter(payload) {
@@ -383,9 +601,24 @@ function renderFooterError() {
    Screens are just sections that get shown or hidden together; each one owns
    its own render function so adding a screen later is one registry entry plus
    one render function, with nothing else in this file to touch. */
+const horoscopeScreen = document.getElementById("screen-horoscope");
+
 const SCREENS = [
     { title: "Current Conditions", el: document.getElementById("screen-current"), render: renderCurrent },
     { title: "Almanac", el: document.getElementById("screen-almanac"), render: renderAlmanac },
+    { title: "Regional Forecast", el: document.getElementById("screen-map"), render: renderMap },
+    { title: "Latest Observations", el: document.getElementById("screen-regional"), render: renderRegional },
+    // Two optional fields, both used only here: onShow, because the readings
+    // type themselves in on arrival rather than when the payload was rendered,
+    // and duration, because twelve readings need longer on screen than a
+    // four-row table does.
+    {
+        title: "Horoscope",
+        el: horoscopeScreen,
+        render: renderHoroscope,
+        onShow: typeHoroscope,
+        duration: HOROSCOPE_DURATION_MS,
+    },
 ];
 
 function prefersReducedMotion() {
@@ -539,7 +772,8 @@ function scheduleRotation() {
     if (rotationPaused || !tuneInOverlay.hidden || prefersReducedMotion()) {
         return;
     }
-    rotationTimeout = setTimeout(() => showScreen(activeScreenIndex + 1), SCREEN_DURATION_MS);
+    const duration = SCREENS[activeScreenIndex].duration || SCREEN_DURATION_MS;
+    rotationTimeout = setTimeout(() => showScreen(activeScreenIndex + 1), duration);
 }
 
 function showScreen(index) {
@@ -548,6 +782,9 @@ function showScreen(index) {
         screen.el.hidden = i !== activeScreenIndex;
     });
     screenTitleEl.textContent = SCREENS[activeScreenIndex].title;
+    if (SCREENS[activeScreenIndex].onShow) {
+        SCREENS[activeScreenIndex].onShow();
+    }
     // A manual step and an automatic one both land here, so either kind of
     // change gives the viewer a full, undiminished interval before the next.
     scheduleRotation();
@@ -685,8 +922,31 @@ channelAudio.addEventListener("error", () => {
     console.warn("No channel music found at music/theme.mp3 -- running silent.");
 }, { once: true });
 
+/* The clock already visits every second, so it is also where the date rolling
+   over gets noticed. Nothing else would: the channel fetches once at power-on
+   and then runs indefinitely, which on a set left on overnight meant yesterday's
+   horoscope still on screen this morning. Refetching brings today's readings
+   down with the rest of the payload. */
+function checkDayRollover(now) {
+    const today = now.toDateString();
+    if (lastSeenDay === null) {
+        lastSeenDay = today;
+        return;
+    }
+    if (today === lastSeenDay) {
+        return;
+    }
+    lastSeenDay = today;
+    // Nothing fetched yet means the first fetch is still in flight or failed,
+    // and it will bring the current day's data with it regardless.
+    if (lastPayload) {
+        fetchWeather(lastPayload.city);
+    }
+}
+
 function tickClock() {
     const now = new Date();
+    checkDayRollover(now);
     let hours = now.getHours();
     const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12 || 12;

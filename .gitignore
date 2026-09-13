@@ -4,6 +4,9 @@
 __pycache__/
 *.pyc
 
+# Today's horoscope readings, regenerated whenever the date rolls over
+weather_app/horoscope_today.json
+
 # Personal music, not redistributed with the app
 weather_app/static/music/*
 !weather_app/static/music/.gitkeep

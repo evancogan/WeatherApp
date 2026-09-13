@@ -116,6 +116,23 @@
                     <div class="almanac-moon-row" id="almanac-moon-row"></div>
                 </div>
             </section>
+
+            <!-- The basemap SVG is fetched and injected into .map-frame the
+                 first time this screen renders; the markers are absolutely
+                 positioned over it from percentages the server projected. -->
+            <section class="screen" id="screen-map" hidden>
+                <div class="map-frame" id="map-frame">
+                    <div class="map-markers" id="map-markers"></div>
+                </div>
+            </section>
+
+            <section class="screen" id="screen-regional" hidden>
+                <div class="regional-table" id="regional-table"></div>
+            </section>
+
+            <section class="screen" id="screen-horoscope" hidden>
+                <div class="horoscope-grid" id="horoscope-grid"></div>
+            </section>
         </main>
 
         <footer class="broadcast-footer" id="broadcast-footer"></footer>

@@ -2,7 +2,9 @@ from datetime import date, datetime
 
 from flask import Flask, jsonify, request, send_from_directory
 
+from horoscope import daily_horoscopes
 from moon import upcoming_phases
+from regional import regional_observations
 from weather_api import get_weather
 from weather_theme import icon_for, color_hex_for
 
@@ -125,6 +127,8 @@ def api_weather():
         "color_hex": color_hex_for(weather_code),
         "forecast": [_day_summary(day, today) for day in weather_data.get("weather", [])[:3]],
         "almanac": _almanac(weather_data, today),
+        "horoscope": daily_horoscopes(today),
+        "regional": regional_observations(),
         "observations": _observations(current),
     })
 

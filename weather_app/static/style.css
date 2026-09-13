@@ -88,6 +88,13 @@ body {
 .almanac-moon-title,
 .moon-name,
 .moon-date,
+.regional-cell,
+.regional-empty,
+.map-marker-city,
+.map-marker-temp,
+.horoscope-sign,
+.horoscope-dates,
+.horoscope-reading,
 .footer-item,
 .tune-in-ident,
 .tune-in-prompt,
@@ -357,7 +364,7 @@ body::before {
    the distortion out toward the edge instead of stopping abruptly.
 
    --magnet-scale (set by app.js, 0-1) is how small movement stays small: the
-   element's own footprint is always the full 20vmin, but it renders shrunk
+   element's own footprint is always the full 14vmin, but it renders shrunk
    toward its center point at low speed and grows toward full size as the
    pointer picks up speed, rather than always appearing at full size the
    instant it starts moving. */
@@ -367,8 +374,8 @@ body::before {
     top: 0;
     left: 0;
     z-index: 9999;
-    width: 20vmin;
-    height: 20vmin;
+    width: 14vmin;
+    height: 14vmin;
     border-radius: 50%;
     pointer-events: none;
     opacity: 0;
@@ -790,6 +797,14 @@ body::before {
     height: 48px;
 }
 
+/* Map markers carry the icon beside the reading rather than above it, so it is
+   sized to the temperature's line rather than to a card. */
+.icon-pin {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+}
+
 /* The temperature and city are buttons standing in for the old fetch form: no
    button chrome, just the readout itself made clickable. Each keeps its own
    .crt-text-listed fuzz; only the reset and the affordance live here. */
@@ -989,7 +1004,200 @@ body::before {
     opacity: 0.9;
 }
 
+/* ---- Screen: Latest Observations ----
+   Five tracks: city, temperature, condition, wind direction, wind speed. The
+   city track takes the slack so the three data columns stay put from row to
+   row instead of drifting with the longest city name. */
+
+.regional-table {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(130px, auto) auto 3ch;
+    align-items: baseline;
+    row-gap: 12px;
+    column-gap: 18px;
+    background: rgba(132, 150, 208, 0.3);
+    border-radius: 4px;
+    padding: 18px 22px;
+}
+
+.regional-cell {
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.regional-cell--head {
+    color: var(--chan-yellow);
+}
+
+/* The heading sits over both wind columns, right-aligned above the speed the
+   way the broadcast tables set it. */
+.regional-cell--wind-head {
+    grid-column: span 2;
+    text-align: right;
+}
+
+/* The roster stores city names in title case because the map prints them that
+   way; the table's all-caps look is applied here rather than in the data. */
+.regional-cell--city {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+}
+
+/* Temperatures and wind speeds are numbers read as a column, so they align on
+   their right edge rather than their first digit. */
+.regional-cell--temp,
+.regional-cell--wind-speed {
+    text-align: right;
+}
+
+.regional-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 1.3rem;
+    opacity: 0.75;
+}
+
+/* ---- Screen: Regional Forecast ----
+   The frame's aspect ratio is not decorative: it is the shape the basemap was
+   projected at (see tools/build_basemap.py). Letting the box take any other
+   ratio would stretch the coastlines away from the markers sitting on them. */
+
+.map-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1000 / 523;
+    border-radius: 4px;
+    /* The ocean, and the ground colour anywhere the land polygons do not cover. */
+    background: rgba(58, 76, 138, 0.55);
+    overflow: hidden;
+}
+
+.map-base {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Desaturated land against slightly bluer water, the way a broadcast map sits
+   back far enough for the readings to stay the brightest thing on screen. */
+.map-land {
+    fill: rgba(146, 140, 168, 0.62);
+}
+
+.map-lake {
+    fill: rgba(58, 76, 138, 0.75);
+}
+
+.map-border {
+    fill: none;
+    stroke: rgba(24, 16, 48, 0.55);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.map-markers {
+    position: absolute;
+    inset: 0;
+}
+
+/* Positioned by its centre so the percentage the server projected lands on the
+   city itself rather than on the corner of its label. */
+.map-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.map-marker-city {
+    font-size: 1.35rem;
+    letter-spacing: 1px;
+}
+
+.map-marker-reading {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.map-marker-temp {
+    font-size: 1.6rem;
+    color: var(--chan-yellow);
+}
+
+/* ---- Screen: Horoscope ---- */
+
+.horoscope-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+
+.horoscope-card {
+    background: rgba(132, 150, 208, 0.3);
+    border-radius: 4px;
+    padding: 10px 12px;
+}
+
+.horoscope-sign {
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--chan-yellow);
+}
+
+.horoscope-dates {
+    font-size: 1rem;
+    letter-spacing: 1px;
+    opacity: 0.8;
+    margin-bottom: 6px;
+}
+
+/* Reserving the height up front keeps the twelve cards from resizing line by
+   line as their readings type in, which otherwise shoves the whole grid around
+   for the length of the animation. */
+.horoscope-reading {
+    font-size: 1.15rem;
+    line-height: 1.3;
+    min-height: 4.8em;
+}
+
+/* The caret only exists while a card is mid-type, so a finished reading is
+   just text. Steps(2) gives a hard blink rather than a fade. */
+.horoscope-reading.is-typing::after {
+    content: "_";
+    animation: horoscope-caret 500ms steps(2, end) infinite;
+}
+
+@keyframes horoscope-caret {
+    0%, 50% { opacity: 1; }
+    50.1%, 100% { opacity: 0; }
+}
+
 @media (max-width: 480px) {
+    /* Five columns of nowrap text do not fit a phone at full size; the grid
+       keeps its shape and the type comes down to meet it. */
+    .regional-table {
+        grid-template-columns: minmax(0, 1fr) auto minmax(90px, auto) auto 3ch;
+        column-gap: 10px;
+        padding: 14px 12px;
+    }
+
+    .regional-cell {
+        font-size: 1.15rem;
+        letter-spacing: 0;
+    }
+
+    .horoscope-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .forecast-strip {
         flex-direction: column;
     }
