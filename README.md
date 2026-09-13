@@ -20,9 +20,3 @@ Audio files in `weather_app/static/music/` are git-ignored, so your audio stays 
 ### Weather icons
 
 Condition icons live in `weather_app/static/icons/` as SVGs named by weather code (`00.svg` through `47.svg`, plus `na.svg`). `weather_app/weather_theme.py` maps each wttr.in `weatherCode` to an icon filename and an accent color.
-
-It should be privated, it's so small and tiny
-
-But. I'd like to share it with you anyway.
-
-<img width="1200" height="1528" alt="image" src="https://github.com/user-attachments/assets/b962a71d-d218-43b4-99d6-1a2f4402fd04" />
