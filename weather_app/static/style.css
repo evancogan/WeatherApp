@@ -184,6 +184,69 @@ body {
     99.2%         { opacity: 1; }
 }
 
+/* Low sun raking in across the top-right corner of the tube, standing in for
+   the angled cut on the reference broadcast's title card. This used to be a
+   pseudo-element on .broadcast-header, which clipped it to that band and left a
+   hard seam where the beam hit the edge of the header; as a fixed layer it runs
+   off the edges of the picture instead. Screen blending for the same reason
+   .reflection uses it: light can only add to the picture, so it brightens the
+   sky and the panel it crosses rather than laying a brown film over them, and
+   white text under it stays white. Sits below .crt-tint (9997), so the tube's
+   rounded corners still cut the beam off at the glass.
+
+   Fixed to the viewport, like every other glass layer here, so scrolling slides
+   the picture underneath a beam that never moves or runs out. Height is pinned
+   rather than stretched between top and bottom because a fixed inset:0 box
+   grows and shrinks with the mobile URL bar, which would drag the mask's
+   falloff up and down the screen mid-scroll. */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: 100lvh;
+    z-index: 9996;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    /* The bright line of the wash runs through the top-right corner (it peaks
+       around 76% along a 115deg axis, which is where that corner falls on most
+       landscape windows) and falls off over most of the width in both
+       directions. Faint and very wide is what separates sunlight from the hard
+       narrow stripe this started as, so the peak alpha stays low and the
+       shoulders are long. The peak warms toward --sky-low, the way light does
+       as it nears its source. */
+    background: linear-gradient(
+        115deg,
+        transparent 44%,
+        rgba(212, 130, 63, 0.12) 62%,
+        rgba(242, 173, 99, 0.3) 76%,
+        rgba(212, 130, 63, 0.1) 90%,
+        transparent 100%
+    );
+    /* Full strength across the title band and the sky above it, then down to a
+       trace over the screen panel, which is where it was washing out the
+       content. It never reaches zero: cutting it off entirely would put the seam
+       back, just lower down. The falloff is spread over a good fraction of the
+       height on purpose -- a tight one reads as a horizontal edge laid across a
+       diagonal beam. */
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 9%,
+        rgba(0, 0, 0, 0.3) 24%,
+        rgba(0, 0, 0, 0.24) 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        #000 0%,
+        #000 9%,
+        rgba(0, 0, 0, 0.3) 24%,
+        rgba(0, 0, 0, 0.24) 100%
+    );
+}
+
 /* The tube glass: a warm cast over the whole picture, then the darkening and
    rounded corners of a curved screen. Split across two pseudo-elements because
    each half needs its own blend mode. */
@@ -571,21 +634,40 @@ body {
     align-items: center;
     gap: 16px;
     padding: 12px 20px;
-    background: linear-gradient(180deg, rgba(36, 26, 77, 0.85), rgba(74, 42, 112, 0.7));
     border-radius: 10px 10px 0 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     overflow: hidden;
 }
 
-/* A decorative diagonal sunbeam, standing in for the angled cut on the
-   reference broadcast's title card. Purely cosmetic, so it sits behind the
-   header's real content rather than clipping the band (and the text in it). */
+/* The band's own paint, split off from the element so its vertical edges can be
+   feathered. As hard cuts they carried the blue window's edge on up through the
+   top of the broadcast box, which read as a seam once the sun wash lit the sky
+   on either side of it. Fading them lets the band dissolve outward instead of
+   stopping on a line. Only these edges are touched -- the bottom of the box
+   never showed the seam, so the footer and the window's own sides keep the crisp
+   edges they have. The divider rides on this element too, so it fades out with
+   the band rather than overshooting it into open sky. The header's real content
+   sits above this on z-index 1. */
 .broadcast-header::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(115deg, transparent 55%, rgba(212, 130, 63, 0.55) 60%, transparent 68%);
     pointer-events: none;
+    background: linear-gradient(180deg, rgba(36, 26, 77, 0.85), rgba(74, 42, 112, 0.7));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 36px,
+        #000 calc(100% - 36px),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to right,
+        transparent 0,
+        #000 36px,
+        #000 calc(100% - 36px),
+        transparent 100%
+    );
 }
 
 .broadcast-logo {
