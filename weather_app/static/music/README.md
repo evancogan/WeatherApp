@@ -15,13 +15,13 @@ does not carry any audio inside it:
 
 | Running | Folder |
 | --- | --- |
-| `python weather_app/server.py` | `weather_app/static/music/` — this folder |
+| `python weather_app/server.py` | `weather_app/static/music/` (this folder) |
 | The packaged `.exe` | `music/`, sitting next to the executable |
 
 `_music_dir()` in `server.py` picks between them. The frozen build resolves it
 against the executable rather than against `sys._MEIPASS`, since that unpacked
-temp directory is rebuilt on every launch — anything dropped there would be gone
-by the next run.
+temp directory is rebuilt on every launch, so anything dropped there would be
+gone by the next run.
 
 The app creates the folder on first launch if it isn't there, and leaves an
 empty `VintageWeatherTheme.mp3` and a `README.txt` in it to show what goes where.
@@ -31,7 +31,7 @@ either way, because an empty file is not decodable audio.
 ## Notes
 
 - Audio here is git-ignored on purpose. Only this README and `.gitkeep` are
-  tracked, so your music never ends up in the repo — or in a build you hand to
+  tracked, so your music never ends up in the repo, or in a build you hand to
   someone else.
 - Keep `soundeffect.mp3` short, a second or two. It's meant to land on the same
   beat as the picture coming up, not to play over the theme.

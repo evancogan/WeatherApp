@@ -609,6 +609,13 @@ body.ui-hidden #ui-button:focus-visible {
     display: none;
 }
 
+/* 24px over a 6x6 grid lands every block on a whole 4px square, so nothing in
+   this glyph gets a half-pixel edge. */
+#ui-button .osd-icon {
+    width: 24px;
+    height: 24px;
+}
+
 /* Standby screen: the click that powers the set on is also what unlocks audio.
    Sits above the OSD controls so powering off the "set" hides them too. */
 .tune-in {
