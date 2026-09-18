@@ -4,6 +4,10 @@
 __pycache__/
 *.pyc
 
+# PyInstaller build output
+/build
+/dist
+
 # Today's horoscope readings, regenerated whenever the date rolls over
 weather_app/horoscope_today.json
 

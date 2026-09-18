@@ -22,12 +22,21 @@ per interpreter run and would have re-rolled every reading on restart.
 
 import hashlib
 import json
+import os
+import sys
 from pathlib import Path
 
-# Where the current day's readings are kept between runs. Sits beside this
-# module and is regenerated whenever it is missing, unreadable, or stale, so
-# deleting it is always safe.
-STORE_PATH = Path(__file__).with_name("horoscope_today.json")
+# Where the current day's readings are kept between runs. Regenerated whenever
+# it is missing, unreadable, or stale, so deleting it is always safe.
+#
+# Running from source it sits beside this module. A PyInstaller build unpacks
+# its modules into a temp directory that is deleted on exit, which would throw
+# the readings away every run, so a frozen build keeps the store under the
+# user's own data directory where it survives a restart.
+if getattr(sys, "frozen", False):
+    STORE_PATH = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "WeatherApp" / "horoscope_today.json"
+else:
+    STORE_PATH = Path(__file__).with_name("horoscope_today.json")
 
 # Name and the date range printed under it. The ranges are the common newspaper
 # ones; the boundaries shift by a day some years, which no one reading a CRT
@@ -202,6 +211,7 @@ def _load_stored(iso_date):
 def _store(iso_date, signs):
     """Write the day's readings, ignoring a read-only or full disk."""
     try:
+        STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
         STORE_PATH.write_text(
             json.dumps({"date": iso_date, "signs": signs}, indent=2),
             encoding="utf-8",

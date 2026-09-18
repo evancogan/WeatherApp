@@ -1,4 +1,6 @@
+import sys
 from datetime import date, datetime
+from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -8,7 +10,12 @@ from regional import regional_observations
 from weather_api import get_weather
 from weather_theme import icon_for, color_hex_for
 
-app = Flask(__name__, static_folder="static", static_url_path="")
+# A PyInstaller build unpacks its bundled data under sys._MEIPASS rather than
+# beside this file, and Flask resolves a relative static_folder against the
+# module path, so the folder is spelled out here instead of as "static".
+_BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+
+app = Flask(__name__, static_folder=str(_BUNDLE_ROOT / "static"), static_url_path="")
 
 
 def _local_today(weather_data):
