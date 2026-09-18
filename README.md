@@ -1,5 +1,8 @@
 ## Weather App
 
+<img width="674" height="432" alt="image" src="https://github.com/user-attachments/assets/9ca4c663-679d-4ef1-834e-b0980ad72a88" />
+
+
 A retro "weather channel" style weather app: a Flask backend proxies [wttr.in](https://wttr.in) and a static frontend renders current conditions and a 3-day forecast in a classic TV-broadcast look.
 
 ### Running it
