@@ -23,22 +23,63 @@
 
     <div class="scanlines"></div>
 
-    <!-- Filter definitions only -- renders nothing on its own. .magnet-lens
-         below references #magnet-ripple to warp the picture right under the
-         pointer, like a degaussing magnet passed near the tube. -->
+    <!-- Definitions only -- renders nothing on its own. .magnet-lens below
+         references #magnet-ripple to warp the picture right under the pointer,
+         like a degaussing magnet passed near the tube, and the nav arrows
+         reference #nav-arrow-glyph. -->
     <svg class="magnet-defs" aria-hidden="true">
         <filter id="magnet-ripple" x="-50%" y="-50%" width="200%" height="200%">
             <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="7" result="noise"></feTurbulence>
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
         </filter>
+        <!-- The screen-change pointers. One symbol; the right arrow is the
+             mirror of the left. -->
+        <symbol id="nav-arrow-glyph" viewBox="0 0 18 18">
+            <path d="M1 9 L9 2 L9 6 L17 6 L17 12 L9 12 L9 16 Z"
+                  fill="#ffffff" stroke="#000000" stroke-width="1" stroke-linejoin="miter"></path>
+        </symbol>
     </svg>
     <div class="magnet-lens" id="magnet-lens" aria-hidden="true"></div>
+
+    <!-- Kept outside .picture so the sync-slip animation does not move them. -->
+    <button type="button" class="nav-arrow nav-arrow-prev" id="nav-prev" title="Previous screen (Left Arrow)">
+        <span class="nav-arrow-label">Previous screen</span>
+        <svg class="nav-arrow-glyph" viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
+            <use href="#nav-arrow-glyph"></use>
+        </svg>
+    </button>
+    <button type="button" class="nav-arrow nav-arrow-next" id="nav-next" title="Next screen (Right Arrow)">
+        <span class="nav-arrow-label">Next screen</span>
+        <svg class="nav-arrow-glyph" viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true">
+            <use href="#nav-arrow-glyph"></use>
+        </svg>
+    </button>
 
     <!-- On-screen display controls. These sit above every CRT overlay (see the
          z-index notes in style.css) and are deliberately never fuzzed, the way
          a real set's own OSD is always crisper than the broadcast picture. -->
     <div class="channel-controls">
         <div class="osd-bezel">
+            <!-- First in the row so it keeps its place when the keys beside it
+                 are hidden. Hiding is visual only; it does not stop the camera
+                 or the music. -->
+            <button type="button" class="osd-chip" id="ui-button" aria-pressed="true" title="Hide the on-screen controls">
+                <!-- Blocky "screen with a frame" glyph, an 8x8 pixel grid: the
+                     corner brackets stay when the fill drops out. -->
+                <svg class="osd-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
+                    <rect x="0" y="0" width="3" height="1" fill="currentColor"></rect>
+                    <rect x="5" y="0" width="3" height="1" fill="currentColor"></rect>
+                    <rect x="0" y="1" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="7" y="1" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="0" y="5" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="7" y="5" width="1" height="2" fill="currentColor"></rect>
+                    <rect x="0" y="7" width="3" height="1" fill="currentColor"></rect>
+                    <rect x="5" y="7" width="3" height="1" fill="currentColor"></rect>
+                    <g class="osd-icon-screen">
+                        <rect x="2" y="2" width="4" height="4" fill="currentColor"></rect>
+                    </g>
+                </svg>
+            </button>
             <button type="button" class="osd-chip" id="reflection-button" aria-pressed="false" title="Turn off screen reflection">
                 <!-- Blocky ring-and-pupil "lens" glyph, an 8x8 pixel grid -->
                 <svg class="osd-icon" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">
@@ -138,10 +179,11 @@
         <footer class="broadcast-footer" id="broadcast-footer"></footer>
     </div>
 
-    <!-- Drop your own track at static/music/theme.mp3 and your own power-on
-         sound at static/music/soundeffect.mp3 -- see music/README.md -->
-    <audio id="channel-audio" src="music/theme.mp3" loop preload="auto"></audio>
-    <audio id="power-on-audio" src="music/soundeffect.mp3" preload="auto"></audio>
+    <!-- Both sources are filled in at run time from /api/music, which lists
+         whatever is in the music folder, so the soundtrack is not baked into
+         this page or into the packaged build. See music/README.md. -->
+    <audio id="channel-audio" preload="auto"></audio>
+    <audio id="power-on-audio" preload="auto"></audio>
 
     <script src="app.js"></script>
 </body>

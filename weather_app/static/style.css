@@ -514,6 +514,101 @@ body::before {
     display: block;
 }
 
+/* Screen-change arrows. At the OSD z-index (10000) so they clear the CRT
+   overlays, and not fuzzed, same as the OSD keys. */
+.nav-arrow {
+    position: fixed;
+    top: 50%;
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.nav-arrow-prev {
+    left: 10px;
+    animation: nav-arrow-bounce-prev 1.6s ease-in-out infinite;
+}
+
+.nav-arrow-next {
+    right: 10px;
+    animation: nav-arrow-bounce-next 1.6s ease-in-out infinite;
+}
+
+.nav-arrow-glyph {
+    width: 30px;
+    height: 30px;
+    /* A bare white arrow disappears over the map and the lit horoscope cards. */
+    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
+}
+
+.nav-arrow-next .nav-arrow-glyph {
+    transform: scaleX(-1);
+}
+
+.nav-arrow:hover .nav-arrow-glyph {
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.85));
+}
+
+.nav-arrow:focus-visible {
+    outline: 2px dashed rgba(255, 255, 255, 0.8);
+    outline-offset: 0;
+}
+
+.nav-arrow-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@keyframes nav-arrow-bounce-prev {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50%      { transform: translateY(-50%) translateX(-7px); }
+}
+
+@keyframes nav-arrow-bounce-next {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50%      { transform: translateY(-50%) translateX(7px); }
+}
+
+/* Hidden state. #ui-button is excluded: it stays in place at low opacity so it
+   can still be found and clicked. */
+body.ui-hidden .nav-arrow,
+body.ui-hidden #mute-button,
+body.ui-hidden #reflection-button {
+    display: none;
+}
+
+body.ui-hidden .osd-bezel {
+    padding: 0;
+    background: none;
+    border-color: transparent;
+}
+
+body.ui-hidden #ui-button {
+    opacity: 0.12;
+    transition: opacity 220ms ease-out;
+}
+
+body.ui-hidden #ui-button:hover,
+body.ui-hidden #ui-button:focus-visible {
+    opacity: 1;
+}
+
+#ui-button.is-off .osd-icon-screen {
+    display: none;
+}
+
 /* Standby screen: the click that powers the set on is also what unlocks audio.
    Sits above the OSD controls so powering off the "set" hides them too. */
 .tune-in {
@@ -615,6 +710,12 @@ body::before {
     }
 
     .tune-in-prompt {
+        animation: none;
+    }
+
+    /* Only the bounce stops. The arrows stay visible and clickable. */
+    .nav-arrow-prev,
+    .nav-arrow-next {
         animation: none;
     }
 

@@ -59,9 +59,19 @@ let lastSeenDay = null;
 let footerLines = [];
 let footerIndex = 0;
 let footerTimer = null;
+// Whatever was in the music folder when the page loaded, in the order it will
+// be played. Empty is a supported state: the channel just runs silent.
+let playlist = [];
+let trackIndex = 0;
+// Counts tracks that failed back to back, so a folder full of unplayable files
+// stops after one pass instead of spinning through them forever.
+let trackFailures = 0;
 
 const muteButton = document.getElementById("mute-button");
 const reflectionButton = document.getElementById("reflection-button");
+const uiButton = document.getElementById("ui-button");
+const navPrev = document.getElementById("nav-prev");
+const navNext = document.getElementById("nav-next");
 const stage = document.getElementById("screen-stage");
 const screenTitleEl = document.getElementById("screen-title");
 const broadcastTimeEl = document.getElementById("broadcast-time");
@@ -138,6 +148,16 @@ function setMuted(muted) {
     savePref("muted", muted);
 }
 
+/* Hides the arrows and the other OSD keys. Visual only -- the camera and the
+   music keep running. */
+function setUiVisible(on) {
+    document.body.classList.toggle("ui-hidden", !on);
+    uiButton.setAttribute("aria-pressed", String(on));
+    uiButton.classList.toggle("is-off", !on);
+    uiButton.title = on ? "Hide the on-screen controls" : "Show the on-screen controls";
+    savePref("ui", on);
+}
+
 function showReflectionState(on) {
     reflectionButton.setAttribute("aria-pressed", String(on));
     reflectionButton.classList.toggle("is-off", !on);
@@ -171,6 +191,67 @@ function fadeInAudio() {
         }
         channelAudio.volume = next;
     }, FADE_STEP_MS);
+}
+
+/* Fetched at load, not at power-on: the click that unlocks audio is the only
+   gesture the browser will accept, and it cannot be spent waiting on a fetch. */
+async function loadMusicManifest() {
+    try {
+        const response = await fetch("/api/music");
+        if (!response.ok) {
+            throw new Error(`/api/music returned ${response.status}`);
+        }
+        const manifest = await response.json();
+        playlist = manifest.tracks || [];
+        if (manifest.power_on) {
+            powerOnAudio.src = `music/${encodeURIComponent(manifest.power_on)}`;
+        }
+        // Looping the element is seamless where reloading the same src on
+        // "ended" leaves an audible gap, so one track keeps the old behavior.
+        channelAudio.loop = playlist.length === 1;
+        if (!playlist.length) {
+            console.warn("No music found in the music folder -- running silent.");
+        }
+    } catch (err) {
+        console.warn("Could not read the music folder:", err);
+    }
+}
+
+function playTrack(index, { fade = false } = {}) {
+    if (!playlist.length) {
+        return false;
+    }
+    trackIndex = ((index % playlist.length) + playlist.length) % playlist.length;
+    channelAudio.src = `music/${encodeURIComponent(playlist[trackIndex])}`;
+    // Only the first track of the session fades up; later ones start at volume.
+    channelAudio.volume = fade ? 0 : TARGET_VOLUME;
+    const playback = channelAudio.play();
+    if (playback) {
+        playback.then(() => {
+            trackFailures = 0;
+            if (fade) {
+                fadeInAudio();
+            }
+        }).catch((err) => {
+            console.warn(`Could not play ${playlist[trackIndex]}:`, err);
+            advanceTrack();
+        });
+    }
+    return true;
+}
+
+/* Steps past a file the browser cannot decode. The seeded placeholder is an
+   empty file, so this is the normal path on a fresh install. */
+function advanceTrack() {
+    if (playlist.length < 2) {
+        return;
+    }
+    trackFailures += 1;
+    if (trackFailures > playlist.length) {
+        console.warn("Nothing in the music folder could be played -- running silent.");
+        return;
+    }
+    playTrack(trackIndex + 1);
 }
 
 function hideOverlay() {
@@ -243,13 +324,8 @@ function powerOn() {
         });
     }
 
-    channelAudio.volume = 0;
-    const playback = channelAudio.play();
-    if (playback) {
-        playback.then(fadeInAudio).catch((err) => {
-            console.error("Channel music unavailable:", err);
-        });
-    }
+    trackFailures = 0;
+    playTrack(0, { fade: true });
 
     // The camera is requested on this same click for the same reason the music
     // is: it is the one user gesture the browser will accept. Skipped when the
@@ -1002,6 +1078,15 @@ muteButton.addEventListener("click", () => {
     setMuted(!channelAudio.muted);
 });
 
+uiButton.addEventListener("click", () => {
+    setUiVisible(document.body.classList.contains("ui-hidden"));
+});
+
+// The same two steps the arrow keys take, so a click and a keypress cannot
+// drift apart.
+navPrev.addEventListener("click", () => showScreen(activeScreenIndex - 1));
+navNext.addEventListener("click", () => showScreen(activeScreenIndex + 1));
+
 reflectionButton.addEventListener("click", async () => {
     if (reflectionStream) {
         stopReflection();
@@ -1049,14 +1134,20 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
-// No theme.mp3 in the folder is a supported state -- the channel just runs silent.
-channelAudio.addEventListener("error", () => {
-    console.warn("No channel music found at music/theme.mp3 -- running silent.");
-}, { once: true });
+channelAudio.addEventListener("ended", () => {
+    trackFailures = 0;
+    playTrack(trackIndex + 1);
+});
 
-// Likewise for the effect: the set still switches on, just without the sound.
+// Not { once: true } any more: with a playlist, each new src can fail on its
+// own, and every one of them needs to hand off to the next track.
+channelAudio.addEventListener("error", () => {
+    console.warn(`Could not load ${playlist[trackIndex] || "the channel music"} -- skipping it.`);
+    advanceTrack();
+});
+
 powerOnAudio.addEventListener("error", () => {
-    console.warn("No power-on sound found at music/soundeffect.mp3 -- powering on quietly.");
+    console.warn("No power-on sound in the music folder -- powering on quietly.");
 }, { once: true });
 
 /* The clock already visits every second, so it is also where the date rolling
@@ -1101,6 +1192,8 @@ tickClock();
 setUnit(prefs.unit === "C" ? "C" : "F");
 setMuted(prefs.muted === true);
 showReflectionState(prefs.reflection !== false);
+setUiVisible(prefs.ui !== false);
 
 showScreen(0);
 fetchWeather("");
+loadMusicManifest();

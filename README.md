@@ -16,9 +16,22 @@ Then open http://localhost:5000 in a browser and click **TUNE IN** to power the 
 
 ### Channel audio
 
-Drop your own background track at `weather_app/static/music/theme.mp3` and a power-on sound effect at `weather_app/static/music/soundeffect.mp3`. No code changes needed. Clicking **TUNE IN** fires the effect immediately and fades the theme in underneath it, looping forever. The browser blocks audio until you interact with the page, which is exactly what that standby screen is for. The mute button silences both.
+Drop audio files into the music folder and they become the channel's rotation, played in order and looped. Name one `soundeffect.mp3` and it becomes the power-on sting instead, fired once when you click **TUNE IN**. Nothing to configure.
 
-Audio files in `weather_app/static/music/` are git-ignored, so your audio stays out of the repo. If either file isn't there, the app powers on without that sound. See [weather_app/static/music/README.md](weather_app/static/music/README.md) for other formats.
+The folder is `weather_app/static/music/` when you run the server yourself, and a `music/` folder next to the executable in a packaged build — the `.exe` carries no audio inside it, so whoever you hand it to can change the soundtrack without a rebuild. The app creates the folder and leaves a placeholder in it on first launch.
+
+Audio files are git-ignored, so your music stays out of the repo. An empty folder is fine; the channel powers on and runs silent. The mute button silences everything. See [weather_app/static/music/README.md](weather_app/static/music/README.md) for the details.
+
+### Controls
+
+| | |
+| --- | --- |
+| Left / Right arrows, or the on-screen arrows | Change screen (there are five) |
+| Click the temperature | Switch °F / °C |
+| Click the city name | Search a different city |
+| Top-right keys | Hide the controls, toggle the screen reflection, mute |
+
+Screens also advance on their own, roughly every ten seconds — the horoscope holds longer, since twelve readings take a while to type out and read.
 
 ### Weather icons
 

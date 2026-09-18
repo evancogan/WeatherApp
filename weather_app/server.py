@@ -17,6 +17,74 @@ _BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
 
 app = Flask(__name__, static_folder=str(_BUNDLE_ROOT / "static"), static_url_path="")
 
+# Everything the <audio> elements will play. Anything else in the folder is
+# ignored rather than handed to the browser as a track.
+MUSIC_EXTENSIONS = {".mp3", ".ogg", ".wav", ".m4a", ".flac"}
+
+# A track by this name is the power-on sting rather than part of the rotation.
+POWER_ON_STEMS = {"soundeffect", "power-on", "poweron"}
+
+# Dropped into an empty music folder so a fresh install shows what goes there
+# and how to name it. Empty on purpose -- the channel skips a track it cannot
+# decode, so the placeholder is a signpost, not something that plays.
+PLACEHOLDER_TRACK = "VintageWeatherTheme.mp3"
+
+PLACEHOLDER_README = """\
+Drop your music here.
+
+Every audio file in this folder (.mp3 .ogg .wav .m4a .flac) becomes part of the
+channel's rotation, played in alphabetical order and looped forever. Add as many
+as you like -- there is nothing to configure.
+
+Name one file "soundeffect.mp3" and it becomes the power-on sting instead: it
+fires once when you click TUNE IN and is left out of the rotation.
+
+VintageWeatherTheme.mp3 is an empty placeholder showing where a track goes.
+Replace it with a real file, or delete it.
+"""
+
+
+def _music_dir():
+    """Where the soundtrack lives: beside the .exe when frozen, in the repo
+    otherwise. Not under sys._MEIPASS -- PyInstaller unpacks that tree fresh on
+    every launch and deletes it on exit, so files added there do not survive.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent / "music"
+    return Path(__file__).parent / "static" / "music"
+
+
+def _music_files():
+    """Playable files in the music folder, sorted, or nothing if it is missing."""
+    try:
+        return sorted(
+            (p for p in _music_dir().iterdir()
+             if p.is_file() and p.suffix.lower() in MUSIC_EXTENSIONS),
+            key=lambda p: p.name.lower(),
+        )
+    except OSError:
+        return []
+
+
+def _ensure_music_dir():
+    """Create the music folder and seed it, on the first run of a fresh install.
+
+    Failures are swallowed so an install in a read-only location still starts;
+    it just runs silent.
+    """
+    music_dir = _music_dir()
+    try:
+        music_dir.mkdir(parents=True, exist_ok=True)
+        if _music_files():
+            return
+        (music_dir / PLACEHOLDER_TRACK).touch()
+        (music_dir / "README.txt").write_text(PLACEHOLDER_README, encoding="utf-8")
+    except OSError as err:
+        print(f"Could not prepare the music folder at {music_dir}: {err}")
+
+
+_ensure_music_dir()
+
 
 def _local_today(weather_data):
     """The calendar date where the weather is, not where this server runs."""
@@ -117,6 +185,35 @@ def _observations(current):
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/api/music")
+def api_music():
+    """What is in the music folder right now, for the page to build a playlist.
+
+    Read on every request rather than cached at startup, so dropping a track in
+    and reloading the page is enough to hear it -- no restart.
+    """
+    power_on = None
+    tracks = []
+    for path in _music_files():
+        if path.stem.lower() in POWER_ON_STEMS and power_on is None:
+            power_on = path.name
+        else:
+            tracks.append(path.name)
+    return jsonify({"power_on": power_on, "tracks": tracks})
+
+
+@app.route("/music/<path:filename>")
+def music_file(filename):
+    """Serves the external music folder.
+
+    This route exists because static_url_path="" mounts the bundled static tree
+    at the web root, and the music folder deliberately is not in that tree.
+    Werkzeug matches this rule ahead of the static catch-all, so /music/... comes
+    from beside the executable rather than from inside it.
+    """
+    return send_from_directory(_music_dir(), filename)
 
 
 @app.route("/api/weather")
