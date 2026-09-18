@@ -5,6 +5,10 @@
 
 A retro "weather channel" style weather app: a Flask backend proxies [wttr.in](https://wttr.in) and a static frontend renders current conditions and a 3-day forecast in a classic TV-broadcast look.
 
+### Downloading it
+
+In the releases tab, there is several stable builds, PLEASE NOTE: the application should be put in its own folder, since the music folder is required to avoid copyright infringement, and will spawn next to your application. 
+
 ### Running it
 
 ```
