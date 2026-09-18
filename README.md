@@ -7,7 +7,7 @@ A retro "weather channel" style weather app: a Flask backend proxies [wttr.in](h
 
 ### Downloading it
 
-In the releases tab, there is several stable builds, PLEASE NOTE: the application should be put in its own folder, since the music folder is required to avoid copyright infringement, and will spawn next to your application. 
+In the releases tab, there is several stable builds, PLEASE NOTE: the application should be put in its own folder, since the music folder is required to avoid copyright infringement, and will spawn next to your application. Be warned, this is also textbook malware behavior, so Windows Smart Screen and Defender will both flag this as malware.
 
 ### Running it
 
