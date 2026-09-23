@@ -1131,6 +1131,10 @@ document.addEventListener("keydown", (event) => {
         showScreen(activeScreenIndex + 1);
     } else if (event.key === "ArrowLeft") {
         showScreen(activeScreenIndex - 1);
+    } else if (event.key === "F11" && window.pywebview) {
+        // In a browser tab F11 is left to the browser.
+        event.preventDefault();
+        window.pywebview.api.toggle_fullscreen();
     }
 });
 
@@ -1185,6 +1189,18 @@ function tickClock() {
 }
 setInterval(tickClock, 1000);
 tickClock();
+
+// The picture's size on the current-conditions screen, plus the body padding.
+const PICTURE_FIT_WIDTH = 792;
+const PICTURE_FIT_HEIGHT = 692;
+const picture = document.querySelector(".picture");
+
+function fitPicture() {
+    const scale = Math.min(window.innerWidth / PICTURE_FIT_WIDTH, window.innerHeight / PICTURE_FIT_HEIGHT);
+    picture.style.zoom = Math.max(1, scale);
+}
+window.addEventListener("resize", fitPicture);
+fitPicture();
 
 /* Restore saved preferences before the first fetch. The reflection is not
    restored here because the camera cannot start without the power-on click, so

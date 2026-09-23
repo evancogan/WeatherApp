@@ -34,6 +34,7 @@ Audio files are git-ignored, so your music stays out of the repo. An empty folde
 | Click the temperature | Switch °F / °C |
 | Click the city name | Search a different city |
 | Top-right keys | Hide the controls, toggle the screen reflection, mute |
+| F11 | Toggle fullscreen |
 
 Screens also advance on their own, roughly every ten seconds. The horoscope holds longer, since twelve readings take a while to type out and read.
 

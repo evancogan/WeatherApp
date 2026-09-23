@@ -851,6 +851,7 @@ body.ui-hidden #ui-button:focus-visible {
     max-width: 760px;
     min-height: 420px;
     background: var(--chan-panel);
+    border-radius: 10px 10px 0 0;
     border-left: 1px solid rgba(255, 255, 255, 0.18);
     border-right: 1px solid rgba(255, 255, 255, 0.18);
     padding: 28px 24px;
