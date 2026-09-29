@@ -64,6 +64,13 @@ def show_welcome():
     ctypes.windll.user32.MessageBoxW(None, WELCOME_TEXT, WELCOME_TITLE, MB_FLAGS)
 
 
+class Api:
+    """Exposed to the page as window.pywebview.api."""
+
+    def toggle_fullscreen(self):
+        webview.windows[0].toggle_fullscreen()
+
+
 def main():
     show_welcome()
     webview.create_window(
@@ -75,6 +82,7 @@ def main():
         # The standby screen is black, so matching it keeps the window from
         # flashing white in the moment before the page paints.
         background_color="#000000",
+        js_api=Api(),
     )
     # private_mode is on by default and would discard localStorage on exit,
     # which is where the mute and city preferences live.
